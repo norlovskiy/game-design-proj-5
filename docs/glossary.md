@@ -6,7 +6,7 @@ Use these words, with these meanings, in code, docs and conversation.
 |------|---------|
 | Manager | The player's avatar. Never performs kitchen tasks. |
 | NPC / employee | One of the kitchen staff. Has a personality and internal state. |
-| Customer | A sprite that queues, waits and pays. Not an NPC in the sense above. |
+| Customer | A simple character that queues, waits and pays. Not an NPC in the sense above. |
 | Personality | A data file defining an NPC's modifiers, traits, description and look. |
 | Trait | An absolute rule attached to a personality, enforced by the state machine (for example `never_refuses`). |
 | Station | A place of work: counter, grill, fryer, prep, cleaning. |

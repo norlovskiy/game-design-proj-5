@@ -3,3 +3,6 @@
 
 # Godot
 .godot/
+
+# Exports
+build/

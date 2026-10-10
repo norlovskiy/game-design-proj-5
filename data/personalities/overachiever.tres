@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Personality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/personality.gd" id="1_pers"]
+
+[resource]
+script = ExtResource("1_pers")
+display_name = "Overachiever"
+description = "Never refuses, burns energy fast, then crashes."
+energy_drain = 2.0
+work_speed = 1.25
+traits = PackedStringArray("never_refuses", "crash_at_zero_energy")
+color = Color(0.35, 0.8, 0.35, 1)
+model_path = "res://assets/models/characters/character-female-e.glb"

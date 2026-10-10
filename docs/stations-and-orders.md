@@ -5,7 +5,8 @@ Owner: Norman. Constants in `CAPS` are defined in [Balance](balance.md).
 ## The kitchen
 
 - One kitchen layout, used for all three levels.
-- A grid of `TILE_SIZE`-pixel tiles, with grid pathfinding.
+- A 3D grid of tiles, each `TILE_SIZE` world units, seen through an
+  isometric camera, with grid pathfinding.
 - NPCs pass through each other, which avoids deadlocks. Passing within one
   tile of a coworker still counts as "passing by" for decisions.
 
@@ -40,7 +41,7 @@ Tickets and dishes are visible objects that NPCs carry.
 
 ## Customers
 
-- Simple sprites that queue at the counter. No personalities, no behaviour
+- Simple characters that queue at the counter. No personalities, no behaviour
   beyond waiting.
 - One patience timer of `CUSTOMER_PATIENCE`, running from arrival until the
   dish is served.

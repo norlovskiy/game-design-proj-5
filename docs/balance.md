@@ -2,9 +2,11 @@
 
 Owner: Naxin.
 
-Every tunable number in the game lives in one balance file, mirrored on this
-page. No number is hard-coded anywhere else; the other specs refer to
-constants by name.
+Every tunable number in the game lives in one balance file,
+`scripts/balance.gd`, mirrored on this page. No number is hard-coded anywhere
+else; the other specs refer to constants by name. The balance file holds a
+placeholder for every TBD value so the prototype runs; those placeholders are
+not decisions.
 
 "Agreed" values came out of the design discussion and are starting points.
 "TBD" values have not been discussed and are Naxin's to set.
@@ -15,8 +17,13 @@ constants by name.
 |----------|-------|--------|
 | `DAY_LENGTH` | 3–4 minutes (start at 210 s) | Agreed |
 | `DAYS_PER_LEVEL` | 3 | Agreed |
-| `TILE_SIZE` | 16 px | Agreed |
+| `TILE_SIZE` | 1 world unit (was 16 px before the move to 3D) | Agreed |
 | `MANAGER_RADIUS` | 3 tiles | Agreed |
+| `INTERACT_RANGE` | 1.5 tiles | TBD |
+| `ADJACENT_RANGE` ("within one tile") | 1.5 tiles | Proposed |
+| `MANAGER_SPEED` | 4 tiles/s | TBD |
+| `NPC_WALK_SPEED` | 2.5 tiles/s | TBD |
+| Camera: `CAMERA_PITCH_DEG`, `CAMERA_YAW_DEG`, `CAMERA_SIZE` | −35.264°, 45°, 13 tiles | Proposed |
 
 ## Decisions
 

@@ -15,8 +15,8 @@ This page is the overview. Each system has its own spec in `docs/`:
 | [Handoff](docs/handoff.md) | Who owns what, and assumptions still to confirm |
 
 ## Pitch
-A top-down 2D pixel-art management game made in Godot 4, played in the
-browser. You manage a small restaurant kitchen. Core theme: **authority
+A 3D isometric management game (fixed top-down orthographic camera, low-poly
+models) made in Godot 4, played in the browser. You manage a small restaurant kitchen. Core theme: **authority
 without control**. The player never cooks, serves or cleans. Every task goes
 through employees who have distinct personalities and don't always do what
 they're told.
@@ -77,7 +77,10 @@ same panel. There are no dialogue trees.
 Order volume increases with each level.
 
 ## Tech baseline
-Godot 4.x, GDScript, web export. WASD or arrow keys to move, one interact key.
+Godot 4.x, GDScript, web export (Compatibility renderer). 3D isometric view
+with an orthographic camera; one tile is one world unit. WASD or arrow keys
+to move (screen-relative), one interact key. See the [README](README.md) for
+how to run the project.
 
 ## Out of scope
 Hiring/firing, upgrades, menu expansion, recipes/ingredient steps,
