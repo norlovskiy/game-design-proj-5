@@ -11,14 +11,19 @@ extends Node3D
 
 ## Row = z, column = x. The camera looks from the +x/+z corner, so the
 ## right-hand and front walls are kept low so they never hide the floor.
+##
+## Laid out like a commercial kitchen: a cook line along the back wall, two
+## rows of counters (islands) with gaps between them, and the service counter
+## at the front. NPCs have to route through the gaps, so where each station
+## sits changes how far every errand is.
 const LAYOUT: Array[String] = [
 	"##############",
-	"#RD.G..F..PYX#",
+	"#RD=G==F===YX#",
 	"#............#",
+	"#.==P==..===.#",
 	"#............#",
-	"#B..........K#",
+	"#B..===..==.K#",
 	"#B...........#",
-	"#............#",
 	"#####=C=######",
 	"oooooooooooooo",
 	"oooooooooooooo",
@@ -95,6 +100,8 @@ func _ready() -> void:
 	for z in size.y:
 		for x in size.x:
 			_build_tile(Vector2i(x, z), LAYOUT[z][x])
+	for station: Station in stations.values():
+		station.handoff_tile = _handoff_tile(station)
 
 
 # --- Grid helpers -----------------------------------------------------------
@@ -158,8 +165,6 @@ func _build_tile(t: Vector2i, c: String) -> void:
 		var open_side := _open_side(t)
 		var station := Station.new()
 		station.setup(STATION_CHARS[c], t, t + open_side)
-		var behind_cook := t + open_side * 2
-		station.handoff_tile = behind_cook if is_walkable(behind_cook) else t + open_side
 		station.position = pos
 		add_child(station)
 		stations[station.station_id] = station
@@ -229,6 +234,19 @@ func _open_side(t: Vector2i) -> Vector2i:
 			best = d
 			best_rank = rank
 	return best
+
+
+## Where the counter NPC stands to hand over at a station: behind the cook if
+## there is floor there, else beside them; never on another station's work
+## tile. Falls back to the work tile itself.
+func _handoff_tile(station: Station) -> Vector2i:
+	var out := station.work_tile - station.tile
+	var side := Vector2i(out.y, out.x)
+	var work_tiles := stations.values().map(func(s: Station) -> Vector2i: return s.work_tile)
+	for t: Vector2i in [station.work_tile + out, station.work_tile + side, station.work_tile - side]:
+		if is_walkable(t) and not t in work_tiles:
+			return t
+	return station.work_tile
 
 
 ## Rotation that turns a model's front (+Z) toward a grid direction.

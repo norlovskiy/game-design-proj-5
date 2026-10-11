@@ -15,6 +15,9 @@ const NAMES := {
 	"chatty": "Riley", "overachiever": "Kit",
 }
 const MANAGER_START := Vector2i(6, 4)
+## Where the roster stands at the start of a shift, in a row going +x: open
+## floor away from every station.
+const NPC_SPAWN := Vector2i(7, 6)
 
 @export_range(1, 3) var level := 1
 ## Use the Debug brain (forcing actions from the overlay) instead of Obedient.
@@ -91,7 +94,6 @@ func _camera_target() -> Vector3:
 
 func _spawn_roster() -> void:
 	var ids: Array = ROSTERS[level]
-	var spawn := kitchen.break_tiles[0] + Vector2i(1, 0)
 	for i in ids.size():
 		var personality: Personality = load("res://data/personalities/%s.tres" % ids[i])
 		var npc := NPC.new()
@@ -106,7 +108,7 @@ func _spawn_roster() -> void:
 		npc.add_child(npc.fallback)
 		npcs.append(npc)
 		add_child(npc)
-		npc.global_position = kitchen.tile_to_world(spawn + Vector2i(i % 3, i / 3))
+		npc.global_position = kitchen.tile_to_world(NPC_SPAWN + Vector2i(i, 0))
 	for npc: NPC in npcs:
 		for other: NPC in npcs:
 			if other == npc:

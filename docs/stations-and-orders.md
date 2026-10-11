@@ -4,7 +4,12 @@ Owner: Norman. Constants in `CAPS` are defined in [Balance](balance.md).
 
 ## The kitchen
 
-- One kitchen layout, used for all three levels.
+- One kitchen layout, used for all three levels, laid out like a commercial
+  kitchen: a cook line along the back wall (grill, fryer), two rows of
+  counters through the middle with gaps to walk through (prep sits in the
+  first row), the sink for cleaning on the side wall, and the service counter
+  at the front. Errands have to route around the counter rows, so distances
+  between stations differ and matter.
 - A 3D grid of tiles, each `TILE_SIZE` world units, seen through an
   isometric camera, with grid pathfinding.
 - NPCs pass through each other, which avoids deadlocks. Passing within one
