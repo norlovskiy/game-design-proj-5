@@ -158,6 +158,8 @@ func _build_tile(t: Vector2i, c: String) -> void:
 		var open_side := _open_side(t)
 		var station := Station.new()
 		station.setup(STATION_CHARS[c], t, t + open_side)
+		var behind_cook := t + open_side * 2
+		station.handoff_tile = behind_cook if is_walkable(behind_cook) else t + open_side
 		station.position = pos
 		add_child(station)
 		stations[station.station_id] = station

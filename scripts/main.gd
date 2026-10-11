@@ -1,6 +1,7 @@
 extends Node3D
 ## Builds one shift: the kitchen, the isometric camera, the manager, the
-## level's roster of NPCs and the UI, and routes the interact key.
+## level's roster of NPCs, customers and orders, and the UI, and routes the
+## interact key.
 
 ## Level rosters (docs/levels-and-economy.md). Employee names are
 ## placeholders until the team picks them.
@@ -20,11 +21,13 @@ const MANAGER_START := Vector2i(6, 4)
 @export var debug_brains := true
 
 var kitchen: Kitchen
+var orders: OrderSystem
 var manager: Manager
 var camera: Camera3D
 var npcs: Array = []
 var panel: InteractPanel
 var overlay: DebugOverlay
+var money_label: Label
 
 var _prompted: NPC
 
@@ -39,6 +42,13 @@ func _ready() -> void:
 	manager.name = "Manager"
 	add_child(manager)
 	manager.global_position = kitchen.tile_to_world(MANAGER_START)
+
+	orders = OrderSystem.new()
+	orders.name = "Orders"
+	orders.kitchen = kitchen
+	orders.crew = npcs
+	orders.level = level
+	add_child(orders)
 
 	_build_camera()
 	_spawn_roster()
@@ -87,6 +97,7 @@ func _spawn_roster() -> void:
 		var npc := NPC.new()
 		npc.setup(NAMES[ids[i]], personality)
 		npc.kitchen = kitchen
+		npc.orders = orders
 		npc.manager = manager
 		npc.crew = npcs
 		npc.brain = DebugBrain.new() if debug_brains else ObedientBrain.new()
@@ -121,6 +132,19 @@ func _build_ui() -> void:
 	help.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 10)
 	help.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	layer.add_child(help)
+	money_label = Label.new()
+	money_label.add_theme_font_size_override("font_size", 28)
+	money_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	money_label.add_theme_constant_override("outline_size", 8)
+	money_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	money_label.position = Vector2(16, 10)
+	layer.add_child(money_label)
+	_on_earnings_changed(orders.earnings)
+	orders.earnings_changed.connect(_on_earnings_changed)
+
+
+func _on_earnings_changed(total: float) -> void:
+	money_label.text = "$%d" % roundi(total)
 
 
 func _process(delta: float) -> void:

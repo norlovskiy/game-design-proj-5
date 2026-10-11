@@ -57,6 +57,12 @@ func _describe(npc: NPC) -> String:
 		doing = "WIND-UP -> " + npc.windup
 	lines.append("station %s  action %s  in range %s" % [
 		npc.station.station_id if npc.station else "-", doing, npc.manager_in_range])
+	if npc.job != "" or npc.carrying:
+		var held := "-"
+		if npc.carrying:
+			held = "dish" if npc.carrying.state == Order.State.DISH else "ticket"
+		lines.append("job %s  carrying %s (%s)" % [npc.job if npc.job != "" else "-", held,
+			npc.carrying.station_id if npc.carrying else ""])
 	if npc.scold_burst > 0.0:
 		lines.append("scold burst %.0fs" % npc.scold_burst)
 	return "\n".join(lines)

@@ -18,6 +18,7 @@ func _run() -> void:
 	main = scene.instantiate()
 	main.level = 3
 	root.add_child(main)
+	main.orders.spawning = false  # customers are tested on their own below
 	await _wait(0.2)
 
 	var sam: NPC = _npc("Sam")
@@ -148,6 +149,10 @@ func _run() -> void:
 	await _wait(0.3)
 	_check(kit.station == k.stations.cleaning, "Overachiever never refuses")
 	await _wait(5.0)
+	# Energy only drains while there is real work: give Kit a ticket to cook.
+	kit.order_assign(k.stations.fryer)
+	k.stations.fryer.add_ticket(Order.new("fryer", null))
+	await _wait(5.0)
 	kit.energy = 0.2
 	await _wait(0.5)
 	_check(kit.action == "crash", "Overachiever crashes at zero energy")
@@ -165,8 +170,80 @@ func _run() -> void:
 	await _wait(Balance.BRAIN_TIMEOUT + 1.0)
 	_check(jo.action == "work", "fallback brain answers when the brain times out")
 
+	await _test_orders()
+
 	print("\n%s: %d failure(s)" % ["PASS" if failures == 0 else "FAIL", failures])
 	quit(1 if failures else 0)
+
+
+## The order pipeline, on a fresh shift: customer -> counter -> ticket ->
+## cook -> dish -> counter -> customer pays; walk-outs; a dropped role.
+func _test_orders() -> void:
+	main.queue_free()
+	await _wait(0.1)
+	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.level = 3
+	root.add_child(main)
+	var orders: OrderSystem = main.orders
+	orders.spawning = false
+	var k: Kitchen = main.kitchen
+	var sam: NPC = _npc("Sam")
+	var kit: NPC = _npc("Kit")
+	sam.order_assign(k.stations.counter)
+	_npc("Avery").order_assign(k.stations.grill)
+	_npc("Jo").order_assign(k.stations.fryer)
+	_npc("Riley").order_assign(k.stations.prep)
+	kit.order_assign(k.stations.cleaning)
+	await _wait(5.0)
+	_check(sam.is_waiting(), "counter NPC waits when there are no customers")
+
+	var c := orders.spawn_customer()
+	_check(await _until(func() -> bool: return sam.job == "take_order", 15.0), "counter NPC takes the front customer's order")
+	_check(await _until(func() -> bool: return sam.carrying != null, 5.0), "taking the order gives a ticket to carry")
+	var ticket: Order = sam.carrying
+	var cook_station: Station = k.stations[ticket.station_id]
+	var cook: NPC = cook_station.occupant
+	_check(await _until(func() -> bool: return cook_station.current_ticket() == ticket, 15.0), "the ticket is carried to its cook station")
+	_check(await _until(func() -> bool: return cook_station.has_dish(), 20.0), "the cook cooks the ticket into a dish")
+	_check(cook.energy < 100.0, "cooking drains energy")
+	_check(await _until(func() -> bool: return sam.carrying == ticket and ticket.state == Order.State.DISH, 15.0), "the counter NPC fetches the dish")
+	_check(await _until(func() -> bool: return orders.earnings > 0.0, 15.0), "the customer is served and pays")
+	_check(orders.earnings >= Balance.ORDER_BASE_PRICE, "payment is at least the base price")
+	_check(c.leaving and not c in orders.waiting, "a served customer leaves")
+	_check(sam.events.any(func(e: Dictionary) -> bool: return e.type == "order_completed"), "order_completed is logged")
+
+	# A customer whose patience runs out walks out; their ticket is thrown away.
+	var earned := orders.earnings
+	var angry := orders.spawn_customer()
+	await _until(func() -> bool: return sam.carrying != null and sam.carrying.customer == angry, 20.0)
+	var lost: Order = sam.carrying
+	angry.patience = 0.0
+	await _wait(0.5)
+	_check(angry.leaving and lost.is_cancelled(), "a customer out of patience walks out and the order is cancelled")
+	_check(sam.carrying == null, "the carried ticket is dropped")
+	_check(kit.events.any(func(e: Dictionary) -> bool: return e.type == "customer_walked_out"), "customer_walked_out is logged")
+	_check(orders.earnings == earned, "a walk-out earns nothing")
+
+	# Losing the counter role mid-delivery leaves the ticket on the counter.
+	orders.spawn_customer()
+	await _until(func() -> bool: return sam.carrying != null, 20.0)
+	var left_behind: Order = sam.carrying
+	sam.order_assign(k.stations.cleaning)  # Kit is swapped off cleaning
+	await _wait(0.3)
+	_check(sam.carrying == null and k.stations.counter.tickets.has(left_behind), "a ticket in hand is left on the counter when the role is lost")
+	kit.order_assign(k.stations.counter)
+	_check(await _until(func() -> bool: return k.stations[left_behind.station_id].tickets.has(left_behind) or left_behind.state == Order.State.DISH, 20.0), "the next counter NPC delivers it")
+
+
+## Waits until a condition holds, up to `timeout` game seconds.
+func _until(condition: Callable, timeout: float) -> bool:
+	var waited := 0.0
+	while waited < timeout:
+		if condition.call():
+			return true
+		await _wait(0.1)
+		waited += 0.1
+	return condition.call()
 
 
 func _npc(npc_name: String) -> NPC:

@@ -98,10 +98,21 @@ const REASSIGN_WINDOW := 60.0
 const REASSIGN_OFTEN := 3  # reassignments inside the window
 const CHAT_PULLED_WINDOW := 60.0
 
-# --- Orders and spills (not built yet; all TBD) ------------------------------
+# --- Orders and customers (all TBD) -----------------------------------------
 const CUSTOMER_PATIENCE := 60.0
+## Seconds between customer arrivals, per level (index 0 = level 1).
+const CUSTOMER_INTERVAL := [16.0, 12.0, 9.0]
+const CUSTOMER_INTERVAL_JITTER := 0.3  # +/- share of the interval
+const FIRST_CUSTOMER_DELAY := 3.0
+const MAX_QUEUE := 6  # customers waiting to order; more do not join
+const CUSTOMER_WALK_SPEED := 2.0  # tiles/s
+const ORDER_TAKE_TIME := 2.0  # seconds at work speed 1
+## Cook time per station, in seconds at work speed 1.
+const COOK_TIME := {"grill": 8.0, "fryer": 6.0, "prep": 5.0}
 const ORDER_BASE_PRICE := 10.0
 const ORDER_MAX_TIP := 5.0
+
+# --- Spills (not built yet; TBD) ---------------------------------------------
 const SPILL_SLOW := 0.5
 
 # --- Goals and grades -------------------------------------------------------

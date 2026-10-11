@@ -12,7 +12,7 @@ var _anim: AnimationPlayer
 var _current := ""
 
 
-func setup(model_path: String, ring_color: Color) -> void:
+func setup(model_path: String, ring_color: Color, with_ring := true) -> void:
 	if model_path != "" and ResourceLoader.exists(model_path):
 		_model = (load(model_path) as PackedScene).instantiate()
 	else:
@@ -24,7 +24,8 @@ func setup(model_path: String, ring_color: Color) -> void:
 		for anim_name in LOOPING:
 			if _anim.has_animation(anim_name):
 				_anim.get_animation(anim_name).loop_mode = Animation.LOOP_LINEAR
-	_add_ring(ring_color)
+	if with_ring:
+		_add_ring(ring_color)
 	play("idle")
 
 

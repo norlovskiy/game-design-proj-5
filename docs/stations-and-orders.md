@@ -39,10 +39,31 @@ pipeline, and needs exactly one cook station.
 
 Tickets and dishes are visible objects that NPCs carry.
 
+How the counter NPC works through it:
+
+- Serving comes first: a finished dish is fetched and served before new
+  orders are taken. Then tickets left on the counter are delivered, then the
+  next customer's order is taken.
+- The counter NPC drops off tickets and picks up dishes standing just behind
+  the cook (the station's hand-off tile), and serves across the counter.
+- Taking an order takes `ORDER_TAKE_TIME`; cooking takes the station's
+  `COOK_TIME`. Both are scaled by work speed.
+- Only actual work drains energy: taking an order, carrying, or cooking a
+  ticket. Waiting at a station with nothing to do does not.
+- A counter NPC who loses the role (reassigned, or swapped off) leaves
+  whatever they were carrying on the counter for the next counter NPC.
+- Cooking progress belongs to the station, so a new cook carries on where the
+  last one stopped.
+- When a customer walks out, their ticket or dish is thrown away wherever it
+  is, including in an NPC's hands.
+
 ## Customers
 
 - Simple characters that queue at the counter. No personalities, no behaviour
-  beyond waiting.
+  beyond waiting. They line up along the outside of the front wall; after
+  ordering they step aside to wait for their dish. At most `MAX_QUEUE` wait
+  to order; anyone arriving while the line is full does not come in.
+- Patience shows as a face above each customer that worsens as it drains.
 - One patience timer of `CUSTOMER_PATIENCE`, running from arrival until the
   dish is served.
 - If patience runs out, the customer leaves and the sale is lost. NPCs log a

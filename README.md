@@ -29,8 +29,9 @@ godot --headless --path . --import            # first time only
 godot --headless --path . -s res://tests/smoke_test.gd
 ```
 
-The smoke test plays through every verb and forces every NPC action on the
-real scene, and exits non-zero on failure. `tests/screenshot.gd` renders
+The smoke test plays through every verb, forces every NPC action, and runs
+orders from customer to payment (plus walk-outs) on the real scene, and exits
+non-zero on failure. `tests/screenshot.gd` renders
 screenshots, which needs a display (e.g. `xvfb-run`).
 
 ### Web export
@@ -45,7 +46,10 @@ Install the export templates from the editor first.
 | `scripts/balance.gd` | Every tunable constant (mirrors [docs/balance.md](docs/balance.md)) |
 | `scripts/main.gd` | Builds a shift: kitchen, camera, manager, roster, UI; routes the interact key |
 | `scripts/kitchen.gd` | The kitchen grid (`LAYOUT`), walls, stations, pathfinding, model slots (`MODELS`) |
-| `scripts/station.gd` | A station and its standing role |
+| `scripts/station.gd` | A station, its standing role, and its tickets and dishes |
+| `scripts/order_system.gd` | Customer arrivals, the queue, serving, payment, walk-outs |
+| `scripts/order.gd` | One order: a ticket that becomes a dish |
+| `scripts/customer.gd` | A customer: queueing, patience face, leaving |
 | `scripts/manager.gd` | The manager: movement, verb lock, presence circle |
 | `scripts/npc.gd` | NPC state machine: state, legality, wind-ups, actions, opinions, talk line, telegraphs |
 | `scripts/character_model.gd` | Character model, animations, personality ring |
@@ -71,11 +75,14 @@ Install the export templates from the editor first.
 - The Brain interface with timeout, fallback and dropping stale answers; the
   Obedient and Debug brains; the debug overlay.
 
+- The order pipeline: customers arrive and queue, the counter NPC takes
+  orders and carries tickets to the cook stations, cooks cook them into
+  dishes, the counter NPC serves them, and customers pay base price plus a
+  tip that shrinks with patience, or walk out. Earnings show top left.
+
 ## Not built yet
 
-- The order pipeline, customers, tickets and dishes, money, spills (and the
-  talk line "This place is a mess."). Until orders exist, Work at a station
-  is always "waiting".
+- Spills, and the talk line "This place is a mess."
 - Days, levels, grades, screens (title, pause, day summary, level result),
   saving.
 

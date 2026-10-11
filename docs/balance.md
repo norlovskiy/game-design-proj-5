@@ -80,11 +80,15 @@ not decisions.
 
 | Constant | Value | Status |
 |----------|-------|--------|
-| `CUSTOMER_PATIENCE` | TBD | TBD |
-| Customer arrival rate, per level | TBD | TBD |
-| Cook time per station | TBD | TBD |
-| `ORDER_BASE_PRICE` | TBD | TBD |
-| `ORDER_MAX_TIP` | TBD | TBD |
+| `CUSTOMER_PATIENCE` | 60 s | TBD |
+| `CUSTOMER_INTERVAL` (arrival rate, per level) | every 16 / 12 / 9 s, ±30% (`CUSTOMER_INTERVAL_JITTER`) | TBD |
+| `FIRST_CUSTOMER_DELAY` | 3 s | TBD |
+| `MAX_QUEUE` (customers waiting to order; more don't join) | 6 | TBD |
+| `CUSTOMER_WALK_SPEED` | 2 tiles/s | TBD |
+| `ORDER_TAKE_TIME` | 2 s at work speed 1 | TBD |
+| `COOK_TIME` (per station) | grill 8 s, fryer 6 s, prep 5 s at work speed 1 | TBD |
+| `ORDER_BASE_PRICE` | 10 | TBD |
+| `ORDER_MAX_TIP` | 5 | TBD |
 | Spill chance, by energy and personality | TBD | TBD |
 | `SPILL_SLOW` | TBD | TBD |
 

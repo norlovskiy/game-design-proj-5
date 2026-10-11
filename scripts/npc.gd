@@ -49,9 +49,14 @@ var action_target := ""
 ## Full action id of a wind-up in progress (e.g. "fight:Sam"), or "".
 var windup := ""
 var events: Array[Dictionary] = []
+## The ticket or dish in this NPC's hands, or null.
+var carrying: Order = null
+## Counter job in progress: "", take_order, deliver_ticket, fetch_dish, serve.
+var job := ""
 
 # --- Wiring (set by main) ------------------------------------------------------
 var kitchen: Kitchen
+var orders: OrderSystem
 var manager: Manager
 var crew: Array = []  # every NPC, this one included
 var brain: Brain
@@ -88,6 +93,8 @@ var _path := PackedVector3Array()
 var _path_index := 0
 var _goal_tile := Vector2i(-1, -1)
 var _last_mood_tier := -1
+var _job_station: Station = null
+var _job_progress := 0.0
 
 var model: CharacterModel
 var _mood_label: Label3D
@@ -148,14 +155,28 @@ func is_at_station() -> bool:
 	return station != null and kitchen.world_to_tile(global_position) == station.work_tile and _path.is_empty()
 
 
-## Work with nothing to do. There are no tickets or spills yet, so a worker
-## at their station is always waiting until the order pipeline exists.
+## Work with nothing to do: not slacking, just standing ready.
 func is_waiting() -> bool:
 	return action == "work" and is_at_station() and not _has_work()
 
 
 func _has_work() -> bool:
-	return false
+	if station == null:
+		return false
+	if station.is_cook():
+		return station.current_ticket() != null
+	if station.station_id == "counter":
+		return carrying != null or job != "" or orders.has_counter_work()
+	return false  # cleaning: spills are not built yet
+
+
+## Doing the job right now (not waiting): what drains energy.
+func is_working_now() -> bool:
+	if action != "work" or station == null:
+		return false
+	if station.is_cook():
+		return is_at_station() and station.current_ticket() != null
+	return job != ""
 
 
 func mood_tier() -> int:
@@ -456,9 +477,11 @@ func _take_station(s: Station) -> void:
 	if station == s:
 		return
 	if station:
+		_leave_role()
 		station.set_occupant(null)
 	if s.occupant and s.occupant != self:
 		var bumped: NPC = s.occupant
+		bumped._leave_role()
 		bumped.station = null
 		if bumped.action == "work":
 			bumped.action = "slack"
@@ -695,6 +718,8 @@ func _update_state(delta: float) -> void:
 
 func _update_action(delta: float) -> void:
 	model.position.y = 0.0  # raised again below while seated on a break chair
+	if carrying and carrying.is_cancelled():
+		_drop_cancelled()
 	if _refuse_time > 0.0:
 		_refuse_time -= delta
 		model.play("emote-no")
@@ -706,6 +731,11 @@ func _update_action(delta: float) -> void:
 		if _windup_time <= 0.0:
 			_finish_windup()
 		return
+	if is_working_now():
+		energy = maxf(0.0, energy - Balance.ENERGY_DRAIN_WORK * personality.energy_drain * work_speed() * delta)
+		if energy <= 0.0:
+			_on_energy_zero()
+			return
 	if _walk(delta):
 		return
 	match action:
@@ -713,12 +743,8 @@ func _update_action(delta: float) -> void:
 			if action == "switch" and is_at_station():
 				action = "work"
 				changed.emit()
-			if station and is_at_station():
-				model.face_point(station.global_position)
-				model.play("interact-right", work_speed())
-				energy = maxf(0.0, energy - Balance.ENERGY_DRAIN_WORK * personality.energy_drain * work_speed() * delta)
-				if energy <= 0.0:
-					_on_energy_zero()
+			if action == "work" and station:
+				_update_work(delta)
 			else:
 				model.play("idle")
 		"slack":
@@ -780,6 +806,142 @@ func _check_passers_by() -> void:
 	_nearby = now_near
 	if someone_new:
 		request_decision()
+
+
+# --- Work ------------------------------------------------------------------------------
+# Work is what a station's role does: cooks cook tickets into dishes; the
+# counter takes orders, carries each ticket to its cook station, and carries
+# each dish back to the customer (docs/stations-and-orders.md).
+
+func _update_work(delta: float) -> void:
+	if station.station_id == "counter":
+		_update_counter(delta)
+		return
+	if not _go_to(station.work_tile):
+		return
+	model.face_point(station.global_position)
+	if station.is_cook() and station.current_ticket() != null:
+		model.play("interact-right", work_speed())
+		var cook_time: float = Balance.COOK_TIME[station.station_id]
+		station.cook(work_speed() * delta / cook_time)
+	else:
+		model.play("idle")  # waiting
+
+
+func _update_counter(delta: float) -> void:
+	var counter := station
+	if job == "":
+		_pick_counter_job()
+	match job:
+		"":
+			if _go_to(counter.work_tile):
+				model.face_point(counter.global_position)
+				model.play("idle")  # waiting
+		"take_order":
+			if not _go_to(counter.work_tile):
+				return
+			if orders.front_customer() == null:
+				_clear_job()
+				return
+			model.face_point(counter.global_position)
+			model.play("interact-right", work_speed())
+			_job_progress += work_speed() * delta / Balance.ORDER_TAKE_TIME
+			if _job_progress >= 1.0:
+				_hold(orders.take_order())
+				_start_carrying_job()
+		"deliver_ticket":
+			if not _go_to(_job_station.handoff_tile):
+				return
+			_job_station.add_ticket(carrying)
+			carrying = null
+			_clear_job()
+		"fetch_dish":
+			if not _go_to(_job_station.handoff_tile):
+				return
+			_hold(_job_station.take_dish())
+			if carrying:
+				_start_carrying_job()
+			else:
+				_clear_job()
+		"serve":
+			if not _go_to(counter.work_tile):
+				return
+			model.face_point(counter.global_position)
+			orders.serve(carrying)
+			carrying = null
+			_clear_job()
+
+
+## Serving waiting customers comes first, then delivering tickets, then
+## taking new orders.
+func _pick_counter_job() -> void:
+	var counter := station
+	if carrying:
+		_start_carrying_job()
+	elif counter.has_dish():
+		_hold(counter.take_dish())
+		_start_carrying_job()
+	elif orders.ready_dish():
+		job = "fetch_dish"
+		_job_station = kitchen.stations[orders.ready_dish().station_id]
+	elif counter.current_ticket():
+		_hold(counter.take_ticket())
+		_start_carrying_job()
+	elif orders.front_customer():
+		job = "take_order"
+		_job_progress = 0.0
+
+
+func _start_carrying_job() -> void:
+	if carrying == null:
+		_clear_job()
+		return
+	job = "serve" if carrying.state == Order.State.DISH else "deliver_ticket"
+	_job_station = kitchen.stations[carrying.station_id]
+
+
+## The customer walked out: the ticket or dish in hands is thrown away and
+## the errand stops.
+func _drop_cancelled() -> void:
+	carrying = null
+	_clear_job()
+	if action == "work":
+		_stop_walking()
+
+
+func _clear_job() -> void:
+	job = ""
+	_job_station = null
+	_job_progress = 0.0
+
+
+func _hold(order: Order) -> void:
+	carrying = order
+	if order:
+		order.place(model, Vector3(0, 0.62, 0.32))
+
+
+## Losing a role: whatever is in hands is left on the counter for the next
+## counter NPC.
+func _leave_role() -> void:
+	if carrying:
+		var counter: Station = kitchen.stations.counter
+		if carrying.state == Order.State.DISH:
+			counter.add_dish(carrying)
+		else:
+			counter.add_ticket(carrying)
+		carrying = null
+	_clear_job()
+
+
+## Walks toward a tile. Returns true once standing on it.
+func _go_to(t: Vector2i) -> bool:
+	if kitchen.world_to_tile(global_position) == t and _path.is_empty():
+		return true
+	if _goal_tile != t or _path.is_empty():
+		_walk_to(t)
+	model.play("idle")
+	return false
 
 
 # --- Walking -------------------------------------------------------------------------
