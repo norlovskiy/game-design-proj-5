@@ -72,7 +72,11 @@ Refuse has no wind-up: it is an immediate answer to an order.
 
 ## Placeholder set
 
-- Coloured rectangles or simple sprites for the manager, five NPCs, and
-  customers.
-- A stock emoji sheet for all bubbles and mood tiers.
-- Flat tiles for floor, walls and each of the five stations.
+- Kenney Mini Characters (3D, CC0) for the manager, five NPCs and
+  customers, with a flat-coloured ring under each NPC for its personality.
+- Text bubbles above heads (for example `zzz`, `NO!`, `<3`) and ASCII mood
+  faces, until an emoji or icon sheet replaces them. They are all in one
+  table, `BUBBLES`, in `scripts/npc.gd`.
+- Coloured boxes for floor, walls and each of the five stations, to be
+  replaced by KayKit Restaurant Bits models (see the `MODELS` table in
+  `scripts/kitchen.gd`).

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Personality" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/personality.gd" id="1_pers"]
+
+[resource]
+script = ExtResource("1_pers")
+display_name = "Chatty"
+description = "Pulls passing coworkers into conversation."
+traits = PackedStringArray()
+color = Color(0.75, 0.4, 0.9, 1)
+model_path = "res://assets/models/characters/character-female-d.glb"
