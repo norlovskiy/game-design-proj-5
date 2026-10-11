@@ -77,6 +77,6 @@ Refuse has no wind-up: it is an immediate answer to an order.
 - Text bubbles above heads (for example `zzz`, `NO!`, `<3`) and ASCII mood
   faces, until an emoji or icon sheet replaces them. They are all in one
   table, `BUBBLES`, in `scripts/npc.gd`.
-- Coloured boxes for floor, walls and each of the five stations, to be
-  replaced by KayKit Restaurant Bits models (see the `MODELS` table in
-  `scripts/kitchen.gd`).
+- KayKit Restaurant Bits (3D, CC0) for floor, walls, the five stations and
+  decor. Which model goes where is the `MODELS` table in
+  `scripts/kitchen.gd`.

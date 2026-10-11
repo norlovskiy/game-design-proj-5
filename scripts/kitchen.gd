@@ -3,16 +3,17 @@ extends Node3D
 ## The one kitchen layout, used for all three levels. Built from LAYOUT on a
 ## grid of TILE_SIZE tiles, with grid pathfinding for NPCs.
 ##
-## Everything is placeholder boxes for now. To use real models (e.g. the
-## KayKit Restaurant Bits pack), put a path in MODELS for a layout character:
-## the model is placed on that tile instead of the box. Models should have
-## their origin at floor level, centred on the tile, one unit per tile.
+## Furniture, floor and walls are KayKit Restaurant Bits models (CC0, in
+## assets/models/kitchen/), listed in MODELS by layout character. KayKit pieces
+## are two units per tile, so they are scaled by KAYKIT_SCALE. Each piece faces
+## its tile's open side (a station faces its work tile). If a model file is
+## missing, a coloured placeholder box is used instead.
 
 ## Row = z, column = x. The camera looks from the +x/+z corner, so the
 ## right-hand and front walls are kept low so they never hide the floor.
 const LAYOUT: Array[String] = [
 	"##############",
-	"#...G..F..P..#",
+	"#RD.G..F..PYX#",
 	"#............#",
 	"#............#",
 	"#B..........K#",
@@ -22,16 +23,39 @@ const LAYOUT: Array[String] = [
 	"oooooooooooooo",
 	"oooooooooooooo",
 ]
+## The wall row between the kitchen and the customers.
+const FRONT_ROW := 7
 
 ## Layout character -> station id. Station tiles are solid.
 const STATION_CHARS := {"C": "counter", "G": "grill", "F": "fryer", "P": "prep", "K": "cleaning"}
-## Model to use for a layout character instead of the placeholder box.
-## Empty means placeholder. Keys: "#" wall, "." floor, "o" outside floor,
-## "=" counter top, "B" break bench, or a station character above.
+## Solid furniture that is not a station: counter tops, break table, decor.
+const FURNITURE_CHARS := ["=", "B", "R", "D", "X", "Y"]
+
+const KAYKIT := "res://assets/models/kitchen/%s.gltf"
+const KAYKIT_SCALE := 0.5
+## Models per layout character: {"file", "y" (height offset, in tiles)}.
 const MODELS := {
-	"#": "", ".": "", "o": "", "=": "", "B": "",
-	"C": "", "G": "", "F": "", "P": "", "K": "",
+	".": [{"file": "floor_kitchen_small", "y": -0.25}],
+	"=": [{"file": "kitchencounter_straight_A"}],
+	"C": [{"file": "kitchencounter_straight_B"}],
+	"G": [{"file": "stove_multi"}],
+	"F": [{"file": "stove_single"}, {"file": "pan_A", "y": 0.47}],
+	"P": [{"file": "kitchentable_A"}, {"file": "cuttingboard", "y": 0.5}],
+	"K": [{"file": "kitchencounter_sink"}],
+	"B": [{"file": "table_round_A_small"}],
+	"R": [{"file": "fridge_A_decorated"}],
+	"D": [{"file": "kitchencounter_straight_A_decorated"}],
+	"X": [{"file": "crate_tomatoes"}],
+	"Y": [{"file": "crate_carrots"}],
 }
+const WALL_MODEL := "wall"
+const WINDOW_MODEL := "wall_window_closed"
+const CORNER_MODEL := "pillar_A"
+const BREAK_SEAT_MODEL := "chair_A"
+## Seat height of the break chair, so a sitting NPC sits on it.
+const BREAK_SEAT_HEIGHT := 0.25
+## KayKit wall panels are 4 x 4 units and 0.5 thick before scaling.
+const WALL_PANEL := Vector3(4.0, 4.0, 0.5)
 
 const WALL_HEIGHT := 1.6
 const LOW_WALL_HEIGHT := 0.35
@@ -42,13 +66,14 @@ const FLOOR_A := Color(0.62, 0.60, 0.56)
 const FLOOR_B := Color(0.54, 0.52, 0.49)
 const OUTSIDE := Color(0.36, 0.45, 0.33)
 const WALL := Color(0.72, 0.66, 0.58)
-const COUNTER_TOP := Color(0.58, 0.40, 0.25)
-const BENCH := Color(0.45, 0.30, 0.20)
+const FURNITURE := Color(0.58, 0.40, 0.25)
 
 var size := Vector2i.ZERO
 var stations := {}  # station id -> Station
-## Floor tiles next to the break bench, where NPCs take breaks.
+## Floor tiles next to the break table, where NPCs take breaks.
 var break_tiles: Array[Vector2i] = []
+## Break tile -> the table tile it faces.
+var break_tables := {}
 var astar := AStarGrid2D.new()
 
 var _materials := {}
@@ -62,9 +87,14 @@ func _ready() -> void:
 	astar.update()
 	for z in size.y:
 		for x in size.x:
+			var c := LAYOUT[z][x]
+			if c != "." and c != "o":
+				astar.set_point_solid(Vector2i(x, z))
+			elif c == "o":
+				astar.set_point_solid(Vector2i(x, z))  # customers only
+	for z in size.y:
+		for x in size.x:
 			_build_tile(Vector2i(x, z), LAYOUT[z][x])
-	for station: Station in stations.values():
-		station.work_tile = _free_neighbour(station.tile)
 
 
 # --- Grid helpers -----------------------------------------------------------
@@ -83,7 +113,7 @@ static func tile_distance(a: Vector3, b: Vector3) -> float:
 
 
 func is_walkable(t: Vector2i) -> bool:
-	return astar.is_in_boundsv(t) and not astar.is_point_solid(t) and LAYOUT[t.y][t.x] == "."
+	return astar.is_in_boundsv(t) and LAYOUT[t.y][t.x] == "."
 
 
 ## World-space path from a point to the centre of a tile. Empty if none.
@@ -111,57 +141,120 @@ func center() -> Vector3:
 
 func _build_tile(t: Vector2i, c: String) -> void:
 	var pos := tile_to_world(t)
-	var outside := c == "o"
-	var floor_color := OUTSIDE if outside else (FLOOR_A if (t.x + t.y) % 2 == 0 else FLOOR_B)
-	if not _place_model("o" if outside else ".", pos):
-		_box(Vector3(1, 0.1, 1), pos + Vector3(0, -0.05, 0), floor_color, false)
+	if c == "o":
+		_box(Vector3(1, 0.1, 1), pos + Vector3(0, -0.05, 0), OUTSIDE, false)
+		return
+	if c == "#":
+		# No kitchen floor under walls: the panel sits on the kitchen side.
+		if t.y == FRONT_ROW:
+			_box(Vector3(1, 0.1, 1), pos + Vector3(0, -0.05, 0), OUTSIDE, false)
+		_build_wall(t, pos)
+		return
+	if not _place_models(".", pos, 0.0):
+		var shade := FLOOR_A if (t.x + t.y) % 2 == 0 else FLOOR_B
+		_box(Vector3(1, 0.1, 1), pos + Vector3(0, -0.05, 0), shade, false)
 
-	match c:
-		".":
-			pass
-		"o":
-			astar.set_point_solid(t)  # customers only; not part of the kitchen grid
-		"#":
-			astar.set_point_solid(t)
-			var near_camera := t.x == size.x - 1 or t.y == size.y - 1 or t.y >= 7
-			var h := LOW_WALL_HEIGHT if near_camera else WALL_HEIGHT
-			if not _place_model(c, pos):
-				_box(Vector3(1, h, 1), pos + Vector3(0, h / 2, 0), WALL, true)
-			else:
-				_collider(Vector3(1, h, 1), pos + Vector3(0, h / 2, 0))
-		"=":
-			astar.set_point_solid(t)
-			_furniture(c, pos, FURNITURE_HEIGHT, COUNTER_TOP)
-		"B":
-			astar.set_point_solid(t)
-			_furniture(c, pos, BENCH_HEIGHT, BENCH)
-			break_tiles.append(t + Vector2i(1, 0))
-		_:
-			if c in STATION_CHARS:
-				astar.set_point_solid(t)
-				var station := Station.new()
-				station.setup(STATION_CHARS[c], t, t)
-				station.position = pos
-				add_child(station)
-				stations[station.station_id] = station
-				if not _place_model(c, Vector3.ZERO, station):
-					_box(Vector3(0.9, FURNITURE_HEIGHT, 0.9), Vector3(0, FURNITURE_HEIGHT / 2, 0), station.color(), false, station)
-				_collider(Vector3(1, FURNITURE_HEIGHT, 1), pos + Vector3(0, FURNITURE_HEIGHT / 2, 0))
-				station.build_labels(FURNITURE_HEIGHT)
+	if c in STATION_CHARS:
+		var open_side := _open_side(t)
+		var station := Station.new()
+		station.setup(STATION_CHARS[c], t, t + open_side)
+		station.position = pos
+		add_child(station)
+		stations[station.station_id] = station
+		if not _place_models(c, Vector3.ZERO, _yaw(open_side), station):
+			_box(Vector3(0.9, FURNITURE_HEIGHT, 0.9), Vector3(0, FURNITURE_HEIGHT / 2, 0), station.color(), false, station)
+		_collider(Vector3(1, FURNITURE_HEIGHT, 1), pos + Vector3(0, FURNITURE_HEIGHT / 2, 0))
+		station.build_labels(FURNITURE_HEIGHT)
+	elif c in FURNITURE_CHARS:
+		var open_side := _open_side(t)
+		var h := BENCH_HEIGHT if c == "B" else FURNITURE_HEIGHT
+		if not _place_models(c, pos, _yaw(open_side)):
+			_box(Vector3(0.95, h, 0.95), pos + Vector3(0, h / 2, 0), FURNITURE, false)
+		_collider(Vector3(1, h, 1), pos + Vector3(0, h / 2, 0))
+		if c == "B":
+			var seat := t + open_side
+			break_tiles.append(seat)
+			break_tables[seat] = t
+			_place_model(BREAK_SEAT_MODEL, tile_to_world(seat), _yaw(-open_side))
 
 
-func _furniture(c: String, pos: Vector3, h: float, color: Color) -> void:
-	if not _place_model(c, pos):
-		_box(Vector3(0.95, h, 0.95), pos + Vector3(0, h / 2, 0), color, false)
+## A wall tile: a thin panel on the kitchen side, or a pillar in a corner.
+## The whole tile is solid.
+func _build_wall(t: Vector2i, pos: Vector3) -> void:
+	var near_camera := t.x == size.x - 1 or t.y >= FRONT_ROW
+	var h := LOW_WALL_HEIGHT if near_camera else WALL_HEIGHT
 	_collider(Vector3(1, h, 1), pos + Vector3(0, h / 2, 0))
+	var inner := Vector2i.ZERO
+	var sides := 0
+	if t.y == 0:
+		inner += Vector2i(0, 1); sides += 1
+	if t.y == FRONT_ROW:
+		inner += Vector2i(0, -1); sides += 1
+	if t.x == 0:
+		inner += Vector2i(1, 0); sides += 1
+	if t.x == size.x - 1:
+		inner += Vector2i(-1, 0); sides += 1
+	var thickness := WALL_PANEL.z * KAYKIT_SCALE
+	if sides == 1:
+		var file := WINDOW_MODEL if not near_camera and (t.x + t.y) % 4 == 2 else WALL_MODEL
+		var at := pos + Vector3(inner.x, 0, inner.y) * (0.5 - thickness / 2.0)
+		var panel_scale := Vector3(1.0 / WALL_PANEL.x, h / WALL_PANEL.y, KAYKIT_SCALE)
+		if not _place_model(file, at, _yaw(inner), self, panel_scale):
+			_box(Vector3(1, h, 1), pos + Vector3(0, h / 2, 0), WALL, false)
+	else:
+		# Corner: a pillar where the two inner faces meet.
+		var at := pos + Vector3(inner.x, 0, inner.y) * (0.5 - thickness / 2.0)
+		var pillar_scale := Vector3(KAYKIT_SCALE, h / 4.1, KAYKIT_SCALE)
+		if not _place_model(CORNER_MODEL, at, 0.0, self, pillar_scale):
+			_box(Vector3(1, h, 1), pos + Vector3(0, h / 2, 0), WALL, false)
 
 
-func _place_model(c: String, pos: Vector3, parent: Node3D = self) -> bool:
-	var path: String = MODELS.get(c, "")
-	if path == "" or not ResourceLoader.exists(path):
+## The neighbouring floor tile a piece of furniture faces: preferably one
+## with a wall behind the furniture, then anything solid behind it.
+func _open_side(t: Vector2i) -> Vector2i:
+	var best := Vector2i.ZERO
+	var best_rank := 0
+	for d: Vector2i in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+		if not is_walkable(t + d):
+			continue
+		var behind := t - d
+		var rank := 1
+		if astar.is_in_boundsv(behind) and LAYOUT[behind.y][behind.x] == "#":
+			rank = 3
+		elif not is_walkable(behind):
+			rank = 2
+		if rank > best_rank:
+			best = d
+			best_rank = rank
+	return best
+
+
+## Rotation that turns a model's front (+Z) toward a grid direction.
+func _yaw(d: Vector2i) -> float:
+	return atan2(float(d.x), float(d.y))
+
+
+## Places every model listed for a layout character. False if any is missing.
+func _place_models(c: String, pos: Vector3, yaw: float, parent: Node3D = self) -> bool:
+	if not MODELS.has(c):
+		return false
+	for spec: Dictionary in MODELS[c]:
+		if not ResourceLoader.exists(KAYKIT % spec.file):
+			return false
+	for spec: Dictionary in MODELS[c]:
+		_place_model(spec.file, pos + Vector3(0, spec.get("y", 0.0), 0), yaw, parent)
+	return true
+
+
+func _place_model(file: String, pos: Vector3, yaw: float, parent: Node3D = self,
+		model_scale := Vector3.ONE * KAYKIT_SCALE) -> bool:
+	var path := KAYKIT % file
+	if not ResourceLoader.exists(path):
 		return false
 	var model: Node3D = (load(path) as PackedScene).instantiate()
 	model.position = pos
+	model.rotation.y = yaw
+	model.scale = model_scale
 	parent.add_child(model)
 	return true
 
@@ -196,13 +289,6 @@ func _material(color: Color) -> StandardMaterial3D:
 		m.roughness = 0.9
 		_materials[color] = m
 	return _materials[color]
-
-
-func _free_neighbour(t: Vector2i) -> Vector2i:
-	for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(1, 0)]:
-		if is_walkable(t + d):
-			return t + d
-	return t
 
 
 func _nearest_walkable(t: Vector2i) -> Vector2i:

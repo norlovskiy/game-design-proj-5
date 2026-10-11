@@ -694,6 +694,7 @@ func _update_state(delta: float) -> void:
 
 
 func _update_action(delta: float) -> void:
+	model.position.y = 0.0  # raised again below while seated on a break chair
 	if _refuse_time > 0.0:
 		_refuse_time -= delta
 		model.play("emote-no")
@@ -729,8 +730,9 @@ func _update_action(delta: float) -> void:
 			model.play("idle" if action == "chat" else "attack-melee-right", 1.0 if action == "chat" else 0.6)
 			_count_down(delta)
 		"break":
-			if _goal_tile != Vector2i(-1, -1):
-				model.face(Vector3(1, 0, 0))
+			if kitchen.break_tables.has(_goal_tile):
+				model.face_point(kitchen.tile_to_world(kitchen.break_tables[_goal_tile]))
+				model.position.y = Kitchen.BREAK_SEAT_HEIGHT
 			model.play("sit")
 			energy = minf(100.0, energy + Balance.ENERGY_RESTORE_BREAK * delta)
 			_count_down(delta)

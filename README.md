@@ -53,11 +53,13 @@ Install the export templates from the editor first.
 | `scripts/ui/` | Interact panel, debug overlay |
 | `data/personalities/` | One `.tres` per personality; add a file to add a personality |
 | `assets/models/characters/` | Kenney Mini Characters (CC0), extracted from `assets/kenney_mini-characters.zip` |
+| `assets/models/kitchen/` | The KayKit Restaurant Bits models in use (CC0), extracted from `assets/KayKit_Restaurant_Bits_1.0_FREE.zip` |
 
 ## Built so far
 
-- 3D isometric kitchen with the five stations, a break bench and the
-  customer area, using placeholder boxes.
+- 3D isometric kitchen built from KayKit models: stove (grill), single stove
+  with pan (fryer), table with cutting board (prep), sink (cleaning), counter,
+  break tables and chairs, fridge and crates, and the customer area.
 - The manager's movement, the `MANAGER_RADIUS` presence circle, enter/leave
   range events, and the interact key with an `[E]` prompt.
 - The interact panel with the talk line (all ten lines, in priority order),
@@ -76,11 +78,8 @@ Install the export templates from the editor first.
   is always "waiting".
 - Days, levels, grades, screens (title, pause, day summary, level result),
   saving.
-- Kitchen models: `assets/KayKit_Restaurant_Bits_1.0_FREE.zip` is an empty
-  (0-byte) file. Re-add the real zip, extract the models under
-  `assets/models/kitchen/`, and set their paths in `MODELS` in
-  `scripts/kitchen.gd`.
 
 ## Credits
 
 Characters: [Kenney](https://www.kenney.nl) Mini Characters, CC0.
+Kitchen: [KayKit](https://www.kaylousberg.com) Restaurant Bits by Kay Lousberg, CC0.

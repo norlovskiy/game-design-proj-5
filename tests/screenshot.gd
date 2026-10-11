@@ -33,6 +33,9 @@ func _run() -> void:
 	await create_timer(4.0).timeout
 	await RenderingServer.frame_post_draw
 	root.get_viewport().get_texture().get_image().save_png(out_dir + "/floor.png")
+	await create_timer(4.0).timeout
+	await RenderingServer.frame_post_draw
+	root.get_viewport().get_texture().get_image().save_png(out_dir + "/break.png")
 	main.overlay.visible = true
 	await create_timer(0.3).timeout
 	await RenderingServer.frame_post_draw
