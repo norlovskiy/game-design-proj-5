@@ -47,7 +47,7 @@ const CAMERA_FOLLOW := 4.0  # how fast the camera eases toward the manager
 
 # --- Decisions --------------------------------------------------------------
 const DECISION_TICK := 4.0
-const BRAIN_TIMEOUT := 1.0  # TBD, with Baani (Jev answers in ~70–500 ms)
+const BRAIN_TIMEOUT := 2.0  # TBD, with Baani (Jev answers in ~70–500 ms) -> edited
 const EVENT_LOG_SIZE := 5
 const WINDUP_DURATION := 1.5
 
