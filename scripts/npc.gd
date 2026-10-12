@@ -497,10 +497,16 @@ func _take_station(s: Station) -> void:
 	s.set_occupant(self)
 
 
+## A free chair if one is open; otherwise a standing tile around the break area.
+## Each chair holds one employee. Chairs are claimed by whoever is walking to
+## or sitting on them.
 func _pick_break_tile() -> Vector2i:
-	var best := kitchen.break_tiles[0]
-	var best_count := INF
 	for t in kitchen.break_tiles:
+		if not _break_claimed(t):
+			return t
+	var best: Vector2i = kitchen.break_stand_tiles[0] if not kitchen.break_stand_tiles.is_empty() else kitchen.break_tiles[0]
+	var best_count := INF
+	for t in kitchen.break_stand_tiles:
 		var count := 0
 		for n: NPC in crew:
 			if n != self and n.action == "break" and n._goal_tile == t:
@@ -509,6 +515,13 @@ func _pick_break_tile() -> Vector2i:
 			best = t
 			best_count = count
 	return best
+
+
+func _break_claimed(t: Vector2i) -> bool:
+	for n: NPC in crew:
+		if n != self and n.action == "break" and n._goal_tile == t:
+			return true
+	return false
 
 
 # --- Manager verbs -----------------------------------------------------------------
@@ -763,15 +776,34 @@ func _update_action(delta: float) -> void:
 			model.play("idle" if action == "chat" else "attack-melee-right", 1.0 if action == "chat" else 0.6)
 			_count_down(delta)
 		"break":
-			if kitchen.break_tables.has(_goal_tile):
+			var on_seat := kitchen.break_tables.has(_goal_tile) and kitchen.world_to_tile(global_position) == _goal_tile
+			if on_seat:
 				model.face_point(kitchen.tile_to_world(kitchen.break_tables[_goal_tile]))
 				model.position.y = Kitchen.BREAK_SEAT_HEIGHT
-			model.play("sit")
-			energy = minf(100.0, energy + Balance.ENERGY_RESTORE_BREAK * delta)
+				model.play("sit")
+				var gain := Balance.ENERGY_RESTORE_BREAK * delta
+				energy = minf(100.0, energy + gain)
+				mood = clampf(mood + Balance.MOOD_RESTORE_BREAK * delta, 0.0, 100.0)
+			else:
+				_face_break_area()
+				model.play("idle")
 			_count_down(delta)
 		"crash":
 			energy = minf(100.0, energy + Balance.ENERGY_RESTORE_BREAK * delta / Balance.CRASH_BREAK_MULTIPLIER)
 			_count_down(delta)
+
+
+func _face_break_area() -> void:
+	if kitchen.break_tiles.is_empty():
+		return
+	var nearest: Vector2i = kitchen.break_tiles[0]
+	var best := INF
+	for t in kitchen.break_tiles:
+		var d := global_position.distance_squared_to(kitchen.tile_to_world(t))
+		if d < best:
+			best = d
+			nearest = t
+	model.face_point(kitchen.tile_to_world(nearest))
 
 
 func _count_down(delta: float) -> void:

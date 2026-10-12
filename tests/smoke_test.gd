@@ -17,6 +17,7 @@ func _run() -> void:
 	var scene: PackedScene = load("res://scenes/main.tscn")
 	main = scene.instantiate()
 	main.level = 3
+	main.debug_brains = true
 	root.add_child(main)
 	main.orders.spawning = false  # customers are tested on their own below
 	await _wait(0.2)
@@ -52,19 +53,21 @@ func _run() -> void:
 	await _wait(4.0)
 	_check(sam.is_at_station(), "NPC walks to its station")
 
-	# Praise, then the per-NPC cooldown and the manager lock.
+	# Praise keeps the per-NPC cooldown but does not lock manager movement.
+	main.panel.open(sam)
 	var mood_before := sam.mood
 	var opinion_before := sam.opinion_of_manager
-	sam.praise()
-	main.manager.lock(Balance.VERB_LOCK)
+	main.panel._on_verb("Praise")
 	_check(sam.mood > mood_before and sam.opinion_of_manager > opinion_before, "Praise raises mood and opinion")
 	_check(not sam.can_take_verb(), "per-NPC verb cooldown after Praise")
-	_check(main.manager.is_locked(), "manager locked after a verb")
+	_check(not main.manager.is_locked(), "manager can move after Praise")
 
 	# Scold: speed burst now, mood and opinion drop when it ends.
 	var speed := sam.work_speed()
 	sam.verb_cooldown = 0.0
-	sam.scold()
+	main.panel._refresh()
+	main.panel._on_verb("Scold")
+	_check(not main.manager.is_locked(), "manager can move after Scold")
 	_check(sam.work_speed() > speed, "Scold speeds up work")
 	mood_before = sam.mood
 	sam.scold_burst = 0.01
@@ -87,7 +90,9 @@ func _run() -> void:
 	jo.order_assign(k.stations.prep)
 	await _wait(0.3)
 	jo.energy = 10.0
-	jo.order_break()
+	main.panel.open(jo)
+	main.panel._on_verb("Break")
+	_check(not main.manager.is_locked(), "manager can move after ordering Break")
 	await _wait(0.3)
 	_check(jo.action == "break" and not jo.is_in_windup(), "ordered Break has no wind-up")
 	await _wait(6.0)
@@ -183,6 +188,7 @@ func _test_orders() -> void:
 	await _wait(0.1)
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	main.level = 3
+	main.debug_brains = true
 	root.add_child(main)
 	var orders: OrderSystem = main.orders
 	orders.spawning = false

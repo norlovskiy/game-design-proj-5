@@ -181,13 +181,10 @@ func _on_verb(verb: String) -> void:
 			_show_stations(true)
 		"Praise":
 			npc.praise()
-			manager.lock(Balance.VERB_LOCK)
 		"Scold":
 			npc.scold()
-			manager.lock(Balance.VERB_LOCK)
 		"Break":
 			npc.order_break()
-			manager.lock(Balance.VERB_LOCK)
 
 
 func _on_station(id: String) -> void:

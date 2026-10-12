@@ -4,11 +4,25 @@ Authority without control: you manage a restaurant kitchen, but every task
 goes through employees who don't always do what they're told. The design is
 in [outline.md](outline.md) and [docs/](docs/).
 
-Godot 4.3+, GDScript, 3D isometric view, web export.
+Godot 4.5+, GDScript, 3D isometric view, web export.
 
 ## Running
 
-Open the folder in Godot 4.3 or later and press Play (`scenes/main.tscn`).
+Open the folder in Godot 4.5 or later and press Play. The entry scene is
+`scenes/game.tscn`: **Start Game** starts a fresh level 1. The standalone
+kitchen scene `scenes/main.tscn` remains available for development.
+
+The three revenue targets are **$250 / $350 / $550**, shown with current revenue
+at the top left. Level 1 has **30 customers**. Serving at least **85%** adds
+**2 customers** to the next level; otherwise its customer count stays the same.
+Every level uses the same five employees: Sam, Avery, Jo, Riley and Kit.
+All levels use the original prototype's running cadence: a 9-second base
+with +/-30% random variation, and the first arrival after 3 seconds. There is no
+target shift duration; results appear after all scheduled customers leave.
+Revenue includes tips and combo bonuses. Passing unlocks **Next Level**;
+level 3 shows campaign completion. Failure offers **Return to Main Menu**.
+**Pause** at the top right freezes the kitchen and offers **Resume Game**
+and **Return to Main Menu**. See [campaign.md](docs/campaign.md) for details.
 
 | Key | Does |
 |-----|------|
@@ -19,14 +33,18 @@ Open the folder in Godot 4.3 or later and press Play (`scenes/main.tscn`).
 | Esc | Back out of the Assign menu, or close the panel |
 | F3 | Debug overlay: real numbers, legal actions, force any action |
 
-On `Main` in `scenes/main.tscn`, `level` (1–3) picks the roster, and
-`debug_brains` swaps the Debug brain for the Obedient brain.
+On `Main` in `scenes/main.tscn`, `level` (1–3) selects the shift level, and
+`debug_brains` selects DebugBrain instead of UtilityBrain. The campaign uses
+UtilityBrain; use the standalone scene with DebugBrain for forced-action tools.
 
 ### Tests
 
 ```
 godot --headless --path . --import            # first time only
 godot --headless --path . -s res://tests/smoke_test.gd
+godot --headless --path . -s res://tests/utility_brain_test.gd
+godot --headless --path . -s res://tests/campaign_test.gd
+godot --headless --path . -s res://tests/campaign_pacing_test.gd
 ```
 
 The smoke test plays through every verb, forces every NPC action, and runs
@@ -45,6 +63,7 @@ Install the export templates from the editor first.
 |------|------|
 | `scripts/balance.gd` | Every tunable constant (mirrors [docs/balance.md](docs/balance.md)) |
 | `scripts/main.gd` | Builds a shift: kitchen, camera, manager, roster, UI; routes the interact key |
+| `scripts/game.gd` | Main menu, three-level campaign, pause, HUD and results |
 | `scripts/kitchen.gd` | The kitchen grid (`LAYOUT`), walls, stations, pathfinding, model slots (`MODELS`) |
 | `scripts/station.gd` | A station, its standing role, and its tickets and dishes |
 | `scripts/order_system.gd` | Customer arrivals, the queue, serving, payment, walk-outs |
@@ -68,7 +87,8 @@ Install the export templates from the editor first.
   range events, and the interact key with an `[E]` prompt.
 - The interact panel with the talk line (all ten lines, in priority order),
   energy and opinion sliders, coworker opinions, and Assign / Praise / Scold /
-  Break with `VERB_LOCK`, per-NPC cooldown and diminishing returns.
+  Break with per-NPC cooldown and diminishing returns. Praise, Scold and
+  Break do not lock manager movement.
 - The NPC state machine: the seven actions with legality, wind-ups that
   interacting cancels, refuse, timed chat / fight / break, the Overachiever
   crash, opinion and mood rules, and snapshot schema v1.
@@ -83,8 +103,8 @@ Install the export templates from the editor first.
 ## Not built yet
 
 - Spills, and the talk line "This place is a mess."
-- Days, levels, grades, screens (title, pause, day summary, level result),
-  saving.
+- Multi-day shifts, grades and saving. The three-level campaign, main menu,
+  pause and level results are implemented.
 
 ## Credits
 

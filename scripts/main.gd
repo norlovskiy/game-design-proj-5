@@ -3,11 +3,10 @@ extends Node3D
 ## level's roster of NPCs, customers and orders, and the UI, and routes the
 ## interact key.
 
-## Level rosters (docs/levels-and-economy.md). Employee names are
-## placeholders until the team picks them.
+## All campaign levels use the full five-person team.
 const ROSTERS := {
-	1: ["lazy", "irritable", "clean_freak"],
-	2: ["lazy", "irritable", "clean_freak", "chatty"],
+	1: ["lazy", "irritable", "clean_freak", "chatty", "overachiever"],
+	2: ["lazy", "irritable", "clean_freak", "chatty", "overachiever"],
 	3: ["lazy", "irritable", "clean_freak", "chatty", "overachiever"],
 }
 const NAMES := {
@@ -20,8 +19,11 @@ const MANAGER_START := Vector2i(6, 4)
 const NPC_SPAWN := Vector2i(7, 6)
 
 @export_range(1, 3) var level := 1
-## Use the Debug brain (forcing actions from the overlay) instead of Obedient.
+## Use the Debug brain (forcing actions from the overlay) instead of Utility.
 @export var debug_brains := true
+## Negative keeps the standalone prototype's unlimited customer stream.
+@export var customer_limit := -1
+@export var revenue_target := 0
 
 var kitchen: Kitchen
 var orders: OrderSystem
@@ -31,6 +33,7 @@ var npcs: Array = []
 var panel: InteractPanel
 var overlay: DebugOverlay
 var money_label: Label
+var combo: ComboMeter
 
 var _prompted: NPC
 
@@ -51,6 +54,7 @@ func _ready() -> void:
 	orders.kitchen = kitchen
 	orders.crew = npcs
 	orders.level = level
+	orders.customer_limit = customer_limit
 	add_child(orders)
 
 	_build_camera()
@@ -102,8 +106,6 @@ func _spawn_roster() -> void:
 		npc.orders = orders
 		npc.manager = manager
 		npc.crew = npcs
-		# npc.brain = DebugBrain.new() if debug_brains else ObedientBrain.new()
-		# npc.fallback = ObedientBrain.new()  # Baani's Utility brain replaces this
 		npc.brain = DebugBrain.new() if debug_brains else UtilityBrain.new()
 		npc.fallback = UtilityBrain.new()
 		npc.add_child(npc.brain)
@@ -133,8 +135,8 @@ func _build_ui() -> void:
 	help.text = "WASD / arrows: move    E / Space: interact    1-4: verbs    Esc: close    F3: debug"
 	help.add_theme_font_size_override("font_size", 13)
 	help.modulate = Color(1, 1, 1, 0.7)
-	help.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 10)
-	help.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 10)
+	help.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	layer.add_child(help)
 	money_label = Label.new()
 	money_label.add_theme_font_size_override("font_size", 28)
@@ -145,10 +147,16 @@ func _build_ui() -> void:
 	layer.add_child(money_label)
 	_on_earnings_changed(orders.earnings)
 	orders.earnings_changed.connect(_on_earnings_changed)
+	combo = ComboMeter.new()
+	combo.orders = orders
+	layer.add_child(combo)
+	orders.order_served.connect(combo.on_order_served)
 
 
 func _on_earnings_changed(total: float) -> void:
 	money_label.text = "$%d" % roundi(total)
+	if revenue_target > 0:
+		money_label.text = "Level %d  |  Revenue: $%.2f\nTarget: $%d" % [level, total, revenue_target]
 
 
 func _process(delta: float) -> void:
