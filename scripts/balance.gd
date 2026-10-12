@@ -14,8 +14,13 @@ const TILE_SIZE := 1.0
 const MANAGER_RADIUS := 3.0
 ## Distance at which the manager can interact with an NPC ("walk next to").
 const INTERACT_RANGE := 1.5  # TBD
+
 ## "Within one tile" for chats and coworkers passing by.
+## Close enough for physical conflict and coworker annoyance.
 const ADJACENT_RANGE := 1.5
+## Close enough to start a conversation.
+const CHAT_RANGE := 1.5
+
 const MANAGER_SPEED := 4.0  # tiles/s, TBD
 const NPC_WALK_SPEED := 2.5  # tiles/s, TBD
 
@@ -120,3 +125,60 @@ const GRADE_C := 1.0
 const GRADE_B := 1.2
 const GRADE_A := 1.5
 const GRADE_S := 2.0
+
+# --- Utility brain ----------------------------------------------------------
+# These are starting values for Naxin to tune. The Utility brain is
+# deterministic: the legal action with the highest score wins.
+
+# General actions.
+const UTILITY_WORK_BASE := 25.0
+const UTILITY_WORK_ENERGY_WEIGHT := 0.35
+const UTILITY_WORK_MOOD_WEIGHT := 0.20
+const UTILITY_WORK_MANAGER_OPINION_WEIGHT := 0.20
+
+const UTILITY_SLACK_BASE := 20.0
+const UTILITY_SLACK_EXHAUSTION_WEIGHT := 0.55
+const UTILITY_SLACK_BAD_MOOD_WEIGHT := 0.25
+const UTILITY_SLACK_LOW_MANAGER_OPINION_WEIGHT := 0.25
+
+const UTILITY_BREAK_BASE := 0.0
+const UTILITY_BREAK_EXHAUSTION_WEIGHT := 0.90
+const UTILITY_BREAK_BAD_MOOD_WEIGHT := 0.15
+
+const UTILITY_SWITCH_BASE := 0.0
+
+# Social actions.
+const UTILITY_CHAT_BASE := 5.0
+const UTILITY_CHAT_OPINION_WEIGHT := 0.15
+const UTILITY_CHAT_IDLE_TARGET_BONUS := 15.0
+const UTILITY_CHAT_REPEAT_PENALTY := 100.0
+const UTILITY_CHAT_REPEAT_WINDOW := 20.0
+
+const UTILITY_FIGHT_BASE := -20.0
+const UTILITY_FIGHT_MY_DISLIKE_WEIGHT := 1.20
+const UTILITY_FIGHT_THEIR_DISLIKE_WEIGHT := 1.00
+
+# Refusing manager orders.
+const UTILITY_REFUSE_BASE := -10.0
+const UTILITY_REFUSE_LOW_MANAGER_OPINION_WEIGHT := 2.50
+const UTILITY_REFUSE_BAD_MOOD_WEIGHT := 0.25
+const UTILITY_REASSIGN_PENALTY := 18.0
+const UTILITY_REASSIGN_MEMORY := 30.0
+
+# Personality-specific preferences.
+const UTILITY_LAZY_WATCHED_WORK_BONUS := 35.0
+const UTILITY_LAZY_UNWATCHED_WORK_PENALTY := 35.0
+const UTILITY_LAZY_WATCHED_SLACK_PENALTY := 15.0
+const UTILITY_LAZY_UNWATCHED_SLACK_BONUS := 40.0
+
+const UTILITY_IRRITABLE_FIGHT_BONUS := 55.0
+const UTILITY_IRRITABLE_REASSIGN_MULTIPLIER := 2.75
+
+const UTILITY_CLEAN_SPILL_BONUS := 150.0
+const UTILITY_SPILL_MEMORY := 12.0
+
+const UTILITY_CHATTY_CHAT_BONUS := 100.0
+
+const UTILITY_OVERACHIEVER_WORK_BONUS := 80.0
+const UTILITY_OVERACHIEVER_SLACK_PENALTY := 50.0
+const UTILITY_OVERACHIEVER_BREAK_PENALTY := 65.0

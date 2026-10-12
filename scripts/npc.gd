@@ -210,11 +210,18 @@ func legal_actions() -> Array[String]:
 		if s != station and s.is_free():
 			legal.append("switch:" + id)
 	for other: NPC in coworkers():
-		if distance_to(other) > Balance.ADJACENT_RANGE:
-			continue
-		if _can_chat_with(other):
+		var distance := distance_to(other)
+
+		if (
+			distance <= Balance.CHAT_RANGE
+			and _can_chat_with(other)
+		):
 			legal.append("chat:" + other.npc_name)
-		if _can_fight_with(other):
+
+		if (
+			distance <= Balance.ADJACENT_RANGE
+			and _can_fight_with(other)
+		):
 			legal.append("fight:" + other.npc_name)
 	legal.append("break")
 	return legal
@@ -797,14 +804,32 @@ func _face_windup_target() -> void:
 
 func _check_passers_by() -> void:
 	var now_near := {}
-	var someone_new := false
+	var new_opportunity := false
+
 	for other: NPC in coworkers():
-		if distance_to(other) <= Balance.ADJACENT_RANGE:
-			now_near[other.npc_name] = true
-			if not _nearby.has(other.npc_name):
-				someone_new = true
+		var distance := distance_to(other)
+		var proximity_tier := 0
+
+		if distance <= Balance.ADJACENT_RANGE:
+			proximity_tier = 2  # Chat and Fight are possible.
+		elif distance <= Balance.CHAT_RANGE:
+			proximity_tier = 1  # Only Chat is possible.
+
+		if proximity_tier == 0:
+			continue
+
+		now_near[other.npc_name] = proximity_tier
+
+		var previous_tier := int(
+			_nearby.get(other.npc_name, 0)
+		)
+
+		if proximity_tier > previous_tier:
+			new_opportunity = true
+
 	_nearby = now_near
-	if someone_new:
+
+	if new_opportunity:
 		request_decision()
 
 

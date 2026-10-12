@@ -102,8 +102,10 @@ func _spawn_roster() -> void:
 		npc.orders = orders
 		npc.manager = manager
 		npc.crew = npcs
-		npc.brain = DebugBrain.new() if debug_brains else ObedientBrain.new()
-		npc.fallback = ObedientBrain.new()  # Baani's Utility brain replaces this
+		# npc.brain = DebugBrain.new() if debug_brains else ObedientBrain.new()
+		# npc.fallback = ObedientBrain.new()  # Baani's Utility brain replaces this
+		npc.brain = DebugBrain.new() if debug_brains else UtilityBrain.new()
+		npc.fallback = UtilityBrain.new()
 		npc.add_child(npc.brain)
 		npc.add_child(npc.fallback)
 		npcs.append(npc)
