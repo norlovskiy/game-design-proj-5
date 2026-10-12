@@ -21,6 +21,8 @@ var npc_name := "Unknown"
 
 var npc_personality := ""
 
+var npc_station := ""
+
 func request_decision(snapshot: Dictionary) -> void:
 	var request_id := int(snapshot.get("request_id", -1))
 	var legal_actions: Array = snapshot.get("legal_actions", [])
@@ -29,6 +31,8 @@ func request_decision(snapshot: Dictionary) -> void:
 	npc_name = String(npc.get("name", "Unknown"))
 
 	npc_personality = String(npc.get("personality", ""))
+
+	npc_station = String(npc.get("station", ""))
 
 	if request_id < 0:
 		_fail.call_deferred(request_id, "missing request_id")
@@ -150,6 +154,38 @@ func _on_request_completed(
 		_fail(
 			request_id,
 			"Overachiever chose %s while work was available" % action_id
+		)
+		return
+
+	# Jo always claims Cleaning while it is available as a decision.
+	if (
+		npc_personality == "Clean freak"
+		and "switch:cleaning" in legal_actions
+		and action_id != "switch:cleaning"
+	):
+		_fail(
+			request_id,
+			"Clean freak ignored the cleaning station"
+		)
+		return
+
+	var switch_available := false
+
+	for legal_action in legal_actions:
+		if String(legal_action).begins_with("switch:"):
+			switch_available = true
+			break
+
+	# Unassigned Kit immediately claims an available station.
+	if (
+		npc_personality == "Overachiever"
+		and npc_station.is_empty()
+		and switch_available
+		and not action_id.begins_with("switch:")
+	):
+		_fail(
+			request_id,
+			"Overachiever ignored available work"
 		)
 		return
 

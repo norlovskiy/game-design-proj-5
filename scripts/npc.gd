@@ -207,7 +207,16 @@ func legal_actions() -> Array[String]:
 	legal.append("slack")
 	for id: String in Station.IDS:
 		var s: Station = kitchen.stations[id]
-		if s != station and s.is_free():
+
+		var jo_claiming_cleaning := (
+			personality.display_name == "Clean freak"
+			and id == "cleaning"
+		)
+
+		if (
+			s != station
+			and (s.is_free() or jo_claiming_cleaning)
+		):
 			legal.append("switch:" + id)
 	for other: NPC in coworkers():
 		var distance := distance_to(other)

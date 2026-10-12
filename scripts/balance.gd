@@ -31,9 +31,9 @@ const INTERACT_RANGE := 1.5  # TBD
 
 ## "Within one tile" for chats and coworkers passing by.
 ## Close enough for physical conflict and coworker annoyance.
-const ADJACENT_RANGE := 1.5
+const ADJACENT_RANGE := 2.0
 ## Close enough to start a conversation.
-const CHAT_RANGE := 1.5
+const CHAT_RANGE := 2.0
 
 const MANAGER_SPEED := 4.0  # tiles/s, TBD
 const NPC_WALK_SPEED := 2.5  # tiles/s, TBD
@@ -76,8 +76,8 @@ const FIGHT_NEARBY_MOOD_LOSS := 5.0  # TBD
 const FIGHT_NEARBY_RANGE := 3.0  # tiles, TBD
 const CHAT_DURATION := 6.0  # TBD
 const CHAT_MOOD_GAIN := 5.0  # TBD
-const BASE_WORK_SPEED := 1.0  # TBD
-const ENERGY_DRAIN_WORK := 0.5  # per second at work, before personality, TBD
+const BASE_WORK_SPEED := 1.15  # edited
+const ENERGY_DRAIN_WORK := 0.4  # per second at work, before personality, edited
 const ENERGY_RESTORE_BREAK := 3.5  # per second while seated on a break chair, TBD
 ## Mood restored while seated, a quarter of the energy rate. Standing nearby restores nothing.
 const MOOD_RESTORE_BREAK := ENERGY_RESTORE_BREAK / 4.0
@@ -104,7 +104,7 @@ const OPINION_REASSIGN_DROP := 3.0  # per reassignment, TBD
 const OPINION_BREAK_GRANTED_GAIN := 5.0  # break granted when energy low, TBD
 const OPINION_BREAK_DENIED_DROP := 3.0  # saw "I need a break", no break, TBD
 const OPINION_HOVER_DROP := 0.3  # per second, Irritable only, TBD
-const OPINION_SLACKER_DROP := 0.2  # per second, working next to a slacker, TBD
+const OPINION_SLACKER_DROP := 0.3  # per second, working next to a slacker, edited
 const MOOD_SPREAD_RATE := 0.15  # per second, near a coworker in a bad mood, TBD
 const MOOD_SPREAD_RANGE := 2.0  # tiles, TBD
 const MOOD_SPREAD_BELOW := 40.0  # a "bad mood" is below this, TBD
@@ -218,7 +218,7 @@ const UTILITY_LAZY_UNWATCHED_WORK_PENALTY := 35.0
 const UTILITY_LAZY_WATCHED_SLACK_PENALTY := 15.0
 const UTILITY_LAZY_UNWATCHED_SLACK_BONUS := 40.0
 
-const UTILITY_IRRITABLE_FIGHT_BONUS := 55.0
+const UTILITY_IRRITABLE_FIGHT_BONUS := 80.0
 const UTILITY_IRRITABLE_REASSIGN_MULTIPLIER := 2.75
 
 const UTILITY_CLEAN_SPILL_BONUS := 150.0
@@ -229,3 +229,6 @@ const UTILITY_CHATTY_CHAT_BONUS := 100.0
 const UTILITY_OVERACHIEVER_WORK_BONUS := 80.0
 const UTILITY_OVERACHIEVER_SLACK_PENALTY := 50.0
 const UTILITY_OVERACHIEVER_BREAK_PENALTY := 65.0
+
+const UTILITY_CLEAN_CLAIM_CLEANING_BONUS := 200.0
+const UTILITY_OVERACHIEVER_CLAIM_STATION_BONUS := 200.0

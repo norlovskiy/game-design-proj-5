@@ -147,16 +147,26 @@ static func _score_action(action_id: String, snapshot: Dictionary) -> float:
 		"switch":
 			score = Balance.UTILITY_SWITCH_BASE
 
+			# Until spills exist, Jo treats Cleaning as her permanent role.
 			if (
 				personality == "Clean freak"
 				and target == "cleaning"
-				and _has_recent_event(
+			):
+				score += Balance.UTILITY_CLEAN_CLAIM_CLEANING_BONUS
+
+				if _has_recent_event(
 					snapshot,
 					"spill_nearby",
 					Balance.UTILITY_SPILL_MEMORY
-				)
+				):
+					score += Balance.UTILITY_CLEAN_SPILL_BONUS
+
+			# If Kit has no role, immediately claim the first available station.
+			if (
+				personality == "Overachiever"
+				and station.is_empty()
 			):
-				score += Balance.UTILITY_CLEAN_SPILL_BONUS
+				score += Balance.UTILITY_OVERACHIEVER_CLAIM_STATION_BONUS
 
 		"chat":
 			var coworker := _find_coworker(snapshot, target)
