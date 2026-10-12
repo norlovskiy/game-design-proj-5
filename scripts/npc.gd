@@ -67,6 +67,7 @@ var manager_in_range := false
 var hover_time := 0.0
 var verb_cooldown := 0.0
 var scold_burst := 0.0
+var forced_work_time := 0.0
 var _scold_pending := 0.0  # multiplier of the drop applied when the burst ends
 var _now := 0.0
 var _windup_time := 0.0
@@ -326,6 +327,9 @@ func snapshot() -> Dictionary:
 ## a crash is running, unless it is answering a manager's order.
 func request_decision() -> void:
 	if action == "crash":
+		return
+	# Manager orders may override a scold, but autonomous choices cannot.
+	if forced_work_time > 0.0 and _order == "":
 		return
 	if _order == "" and is_busy():
 		return
@@ -587,9 +591,44 @@ func praise() -> void:
 func scold() -> void:
 	if not can_take_verb():
 		return
-	_scold_pending += _repeat_factor("scold") * personality.scold_multiplier
+	var mult := _repeat_factor("scold") * personality.scold_multiplier
+	_scold_pending += mult
 	scold_burst = Balance.SCOLD_BURST_DURATION
+
+	var duration := Balance.SCOLD_FORCE_WORK_SHORT
+	if opinion_of_manager > Balance.SCOLD_COMPLIANCE_THRESHOLD:
+		duration = Balance.SCOLD_FORCE_WORK_LONG
+
+	_force_back_to_work(duration)
 	_after_verb("scolded")
+
+
+func _force_back_to_work(duration: float) -> void:
+	# Scolding cannot invent a role or override complete exhaustion.
+	if station == null or energy <= 0.0:
+		return
+
+	# If this NPC was chatting, release the coworker instead of leaving them
+	# stuck in a one-sided conversation.
+	if action == "chat":
+		var partner := find_coworker(action_target)
+		if (
+			partner
+			and partner.action == "chat"
+			and partner.action_target == npc_name
+		):
+			partner._end_timed()
+
+	# Ignore any Jev or Utility answer requested before the scold.
+	_pending = -1
+	_pending_snapshot = {}
+	_asked_fallback = false
+
+	windup = ""
+	_windup_time = 0.0
+	_action_time = 0.0
+	forced_work_time = maxf(forced_work_time, duration)
+	_begin("work")
 
 
 func order_break() -> void:
@@ -691,6 +730,7 @@ func _process(delta: float) -> void:
 	for k in _fight_cooldowns.keys():
 		_fight_cooldowns[k] = maxf(0.0, _fight_cooldowns[k] - delta)
 	_update_scold(delta)
+	_update_forced_work(delta)
 	_update_brain_timeout(delta)
 	_update_state(delta)
 	_update_action(delta)
@@ -710,6 +750,22 @@ func _update_scold(delta: float) -> void:
 		mood = clampf(mood - Balance.SCOLD_MOOD_DROP * _scold_pending, 0, 100)
 		opinion_of_manager = clampf(opinion_of_manager - Balance.SCOLD_OPINION_DROP * _scold_pending, 0, 100)
 		_scold_pending = 0.0
+
+
+func _update_forced_work(delta: float) -> void:
+	if forced_work_time <= 0.0:
+		return
+
+	# A lost role or complete exhaustion makes forced work impossible.
+	if station == null or energy <= 0.0:
+		forced_work_time = 0.0
+		request_decision()
+		return
+
+	forced_work_time = maxf(0.0, forced_work_time - delta)
+	if forced_work_time <= 0.0:
+		changed.emit()
+		request_decision()
 
 
 func _update_brain_timeout(delta: float) -> void:

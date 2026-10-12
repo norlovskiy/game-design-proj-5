@@ -62,6 +62,11 @@ const SCOLD_SPEED_BONUS := 0.30
 const SCOLD_BURST_DURATION := 20.0
 const SCOLD_MOOD_DROP := 15.0
 const SCOLD_OPINION_DROP := 10.0
+## Scolding temporarily overrides autonomous decisions when an NPC has a job.
+## Employees who still respect the manager comply much longer than resentful ones.
+const SCOLD_COMPLIANCE_THRESHOLD := 35.0
+const SCOLD_FORCE_WORK_LONG := 15.0
+const SCOLD_FORCE_WORK_SHORT := 2.0
 const IRRITABLE_SCOLD_MULTIPLIER := 2.0
 const PRAISE_MOOD_GAIN := 10.0  # TBD
 const PRAISE_OPINION_GAIN := 5.0  # TBD
