@@ -69,10 +69,29 @@ func _run() -> void:
 	main.panel._on_verb("Scold")
 	_check(not main.manager.is_locked(), "manager can move after Scold")
 	_check(sam.work_speed() > speed, "Scold speeds up work")
+	_check(
+		sam.action == "work"
+		and sam.forced_work_time > Balance.SCOLD_FORCE_WORK_LONG - 1.0,
+		"trusted NPC is forced back to work for the long Scold duration"
+	)
 	mood_before = sam.mood
 	sam.scold_burst = 0.01
 	await _wait(0.1)
 	_check(sam.mood < mood_before, "Scold drops mood when the burst ends")
+
+	# A resentful NPC still responds, but regains autonomy after two seconds.
+	sam.forced_work_time = 0.0
+	sam.opinion_of_manager = Balance.SCOLD_COMPLIANCE_THRESHOLD
+	sam.action = "slack"
+	sam.verb_cooldown = 0.0
+	sam.scold()
+	_check(
+		sam.action == "work"
+		and sam.forced_work_time > 0.0
+		and sam.forced_work_time <= Balance.SCOLD_FORCE_WORK_SHORT,
+		"resentful NPC only receives the short forced-work duration"
+	)
+	sam.forced_work_time = 0.0
 
 	# Assigning to a taken station swaps the other NPC off it.
 	avery.order_assign(k.stations.grill)
@@ -171,9 +190,21 @@ func _run() -> void:
 	jo.brain = silent
 	jo.add_child(silent)
 	silent.decided.connect(jo._on_decided.bind(false))
+	# Isolate this timeout check from periodic ticks and passing coworkers,
+	# either of which can legitimately replace the pending request.
+	var jo_crew := jo.crew
+	jo.crew = [jo]
+	jo._tick = Balance.BRAIN_TIMEOUT + 10.0
 	jo._end_timed()
-	await _wait(Balance.BRAIN_TIMEOUT + 1.0)
-	_check(jo.action == "work", "fallback brain answers when the brain times out")
+	var fallback_answered := await _until(
+		func() -> bool: return jo._asked_fallback and jo._pending == -1,
+		Balance.BRAIN_TIMEOUT + 2.0
+	)
+	jo.crew = jo_crew
+	_check(
+		fallback_answered,
+		"fallback brain answers when the brain times out"
+	)
 
 	await _test_orders()
 

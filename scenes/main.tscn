@@ -4,5 +4,5 @@
 
 [node name="Main" type="Node3D" unique_id=695165629]
 script = ExtResource("1_main")
-level = 3
 debug_brains = false
+use_jev = true

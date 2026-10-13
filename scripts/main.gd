@@ -20,8 +20,21 @@ const NPC_SPAWN := Vector2i(7, 6)
 
 @export_range(1, 3) var level := 1
 ## Use the Debug brain (forcing actions from the overlay) instead of Utility.
-@export var debug_brains := true
+# @export var debug_brains := true
 ## Negative keeps the standalone prototype's unlimited customer stream.
+
+@export_group("Brains")
+
+## Enables manual action forcing for state-machine tests.
+@export var debug_brains := true
+
+## Uses Jev when Debug brains are disabled.
+## Leave false for free offline Utility play.
+@export var use_jev := false
+
+## Public Cloudflare Worker URL.
+@export var jev_proxy_url := "https://kitchen-jev-proxy.baanipasrija25.workers.dev"
+
 @export var customer_limit := -1
 @export var revenue_target := 0
 
@@ -106,8 +119,18 @@ func _spawn_roster() -> void:
 		npc.orders = orders
 		npc.manager = manager
 		npc.crew = npcs
-		npc.brain = DebugBrain.new() if debug_brains else UtilityBrain.new()
+		
+		if debug_brains:
+			npc.brain = DebugBrain.new()
+		elif use_jev:
+			var jev := JevBrain.new()
+			jev.proxy_url = jev_proxy_url
+			npc.brain = jev
+		else:
+			npc.brain = UtilityBrain.new()
+
 		npc.fallback = UtilityBrain.new()
+
 		npc.add_child(npc.brain)
 		npc.add_child(npc.fallback)
 		npcs.append(npc)
