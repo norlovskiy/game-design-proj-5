@@ -67,6 +67,7 @@ var manager_in_range := false
 var hover_time := 0.0
 var verb_cooldown := 0.0
 var scold_burst := 0.0
+var forced_work_time := 0.0
 var _scold_pending := 0.0  # multiplier of the drop applied when the burst ends
 var _now := 0.0
 var _windup_time := 0.0
@@ -207,14 +208,30 @@ func legal_actions() -> Array[String]:
 	legal.append("slack")
 	for id: String in Station.IDS:
 		var s: Station = kitchen.stations[id]
-		if s != station and s.is_free():
+
+		var jo_claiming_cleaning := (
+			personality.display_name == "Clean freak"
+			and id == "cleaning"
+		)
+
+		if (
+			s != station
+			and (s.is_free() or jo_claiming_cleaning)
+		):
 			legal.append("switch:" + id)
 	for other: NPC in coworkers():
-		if distance_to(other) > Balance.ADJACENT_RANGE:
-			continue
-		if _can_chat_with(other):
+		var distance := distance_to(other)
+
+		if (
+			distance <= Balance.CHAT_RANGE
+			and _can_chat_with(other)
+		):
 			legal.append("chat:" + other.npc_name)
-		if _can_fight_with(other):
+
+		if (
+			distance <= Balance.ADJACENT_RANGE
+			and _can_fight_with(other)
+		):
 			legal.append("fight:" + other.npc_name)
 	legal.append("break")
 	return legal
@@ -310,6 +327,9 @@ func snapshot() -> Dictionary:
 ## a crash is running, unless it is answering a manager's order.
 func request_decision() -> void:
 	if action == "crash":
+		return
+	# Manager orders may override a scold, but autonomous choices cannot.
+	if forced_work_time > 0.0 and _order == "":
 		return
 	if _order == "" and is_busy():
 		return
@@ -490,10 +510,16 @@ func _take_station(s: Station) -> void:
 	s.set_occupant(self)
 
 
+## A free chair if one is open; otherwise a standing tile around the break area.
+## Each chair holds one employee. Chairs are claimed by whoever is walking to
+## or sitting on them.
 func _pick_break_tile() -> Vector2i:
-	var best := kitchen.break_tiles[0]
-	var best_count := INF
 	for t in kitchen.break_tiles:
+		if not _break_claimed(t):
+			return t
+	var best: Vector2i = kitchen.break_stand_tiles[0] if not kitchen.break_stand_tiles.is_empty() else kitchen.break_tiles[0]
+	var best_count := INF
+	for t in kitchen.break_stand_tiles:
 		var count := 0
 		for n: NPC in crew:
 			if n != self and n.action == "break" and n._goal_tile == t:
@@ -502,6 +528,13 @@ func _pick_break_tile() -> Vector2i:
 			best = t
 			best_count = count
 	return best
+
+
+func _break_claimed(t: Vector2i) -> bool:
+	for n: NPC in crew:
+		if n != self and n.action == "break" and n._goal_tile == t:
+			return true
+	return false
 
 
 # --- Manager verbs -----------------------------------------------------------------
@@ -558,9 +591,44 @@ func praise() -> void:
 func scold() -> void:
 	if not can_take_verb():
 		return
-	_scold_pending += _repeat_factor("scold") * personality.scold_multiplier
+	var mult := _repeat_factor("scold") * personality.scold_multiplier
+	_scold_pending += mult
 	scold_burst = Balance.SCOLD_BURST_DURATION
+
+	var duration := Balance.SCOLD_FORCE_WORK_SHORT
+	if opinion_of_manager > Balance.SCOLD_COMPLIANCE_THRESHOLD:
+		duration = Balance.SCOLD_FORCE_WORK_LONG
+
+	_force_back_to_work(duration)
 	_after_verb("scolded")
+
+
+func _force_back_to_work(duration: float) -> void:
+	# Scolding cannot invent a role or override complete exhaustion.
+	if station == null or energy <= 0.0:
+		return
+
+	# If this NPC was chatting, release the coworker instead of leaving them
+	# stuck in a one-sided conversation.
+	if action == "chat":
+		var partner := find_coworker(action_target)
+		if (
+			partner
+			and partner.action == "chat"
+			and partner.action_target == npc_name
+		):
+			partner._end_timed()
+
+	# Ignore any Jev or Utility answer requested before the scold.
+	_pending = -1
+	_pending_snapshot = {}
+	_asked_fallback = false
+
+	windup = ""
+	_windup_time = 0.0
+	_action_time = 0.0
+	forced_work_time = maxf(forced_work_time, duration)
+	_begin("work")
 
 
 func order_break() -> void:
@@ -662,6 +730,7 @@ func _process(delta: float) -> void:
 	for k in _fight_cooldowns.keys():
 		_fight_cooldowns[k] = maxf(0.0, _fight_cooldowns[k] - delta)
 	_update_scold(delta)
+	_update_forced_work(delta)
 	_update_brain_timeout(delta)
 	_update_state(delta)
 	_update_action(delta)
@@ -681,6 +750,22 @@ func _update_scold(delta: float) -> void:
 		mood = clampf(mood - Balance.SCOLD_MOOD_DROP * _scold_pending, 0, 100)
 		opinion_of_manager = clampf(opinion_of_manager - Balance.SCOLD_OPINION_DROP * _scold_pending, 0, 100)
 		_scold_pending = 0.0
+
+
+func _update_forced_work(delta: float) -> void:
+	if forced_work_time <= 0.0:
+		return
+
+	# A lost role or complete exhaustion makes forced work impossible.
+	if station == null or energy <= 0.0:
+		forced_work_time = 0.0
+		request_decision()
+		return
+
+	forced_work_time = maxf(0.0, forced_work_time - delta)
+	if forced_work_time <= 0.0:
+		changed.emit()
+		request_decision()
 
 
 func _update_brain_timeout(delta: float) -> void:
@@ -756,15 +841,34 @@ func _update_action(delta: float) -> void:
 			model.play("idle" if action == "chat" else "attack-melee-right", 1.0 if action == "chat" else 0.6)
 			_count_down(delta)
 		"break":
-			if kitchen.break_tables.has(_goal_tile):
+			var on_seat := kitchen.break_tables.has(_goal_tile) and kitchen.world_to_tile(global_position) == _goal_tile
+			if on_seat:
 				model.face_point(kitchen.tile_to_world(kitchen.break_tables[_goal_tile]))
 				model.position.y = Kitchen.BREAK_SEAT_HEIGHT
-			model.play("sit")
-			energy = minf(100.0, energy + Balance.ENERGY_RESTORE_BREAK * delta)
+				model.play("sit")
+				var gain := Balance.ENERGY_RESTORE_BREAK * delta
+				energy = minf(100.0, energy + gain)
+				mood = clampf(mood + Balance.MOOD_RESTORE_BREAK * delta, 0.0, 100.0)
+			else:
+				_face_break_area()
+				model.play("idle")
 			_count_down(delta)
 		"crash":
 			energy = minf(100.0, energy + Balance.ENERGY_RESTORE_BREAK * delta / Balance.CRASH_BREAK_MULTIPLIER)
 			_count_down(delta)
+
+
+func _face_break_area() -> void:
+	if kitchen.break_tiles.is_empty():
+		return
+	var nearest: Vector2i = kitchen.break_tiles[0]
+	var best := INF
+	for t in kitchen.break_tiles:
+		var d := global_position.distance_squared_to(kitchen.tile_to_world(t))
+		if d < best:
+			best = d
+			nearest = t
+	model.face_point(kitchen.tile_to_world(nearest))
 
 
 func _count_down(delta: float) -> void:
@@ -797,14 +901,32 @@ func _face_windup_target() -> void:
 
 func _check_passers_by() -> void:
 	var now_near := {}
-	var someone_new := false
+	var new_opportunity := false
+
 	for other: NPC in coworkers():
-		if distance_to(other) <= Balance.ADJACENT_RANGE:
-			now_near[other.npc_name] = true
-			if not _nearby.has(other.npc_name):
-				someone_new = true
+		var distance := distance_to(other)
+		var proximity_tier := 0
+
+		if distance <= Balance.ADJACENT_RANGE:
+			proximity_tier = 2  # Chat and Fight are possible.
+		elif distance <= Balance.CHAT_RANGE:
+			proximity_tier = 1  # Only Chat is possible.
+
+		if proximity_tier == 0:
+			continue
+
+		now_near[other.npc_name] = proximity_tier
+
+		var previous_tier := int(
+			_nearby.get(other.npc_name, 0)
+		)
+
+		if proximity_tier > previous_tier:
+			new_opportunity = true
+
 	_nearby = now_near
-	if someone_new:
+
+	if new_opportunity:
 		request_decision()
 
 

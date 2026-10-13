@@ -75,10 +75,12 @@ const FURNITURE := Color(0.58, 0.40, 0.25)
 
 var size := Vector2i.ZERO
 var stations := {}  # station id -> Station
-## Floor tiles next to the break table, where NPCs take breaks.
+## Floor tiles next to the break table, one sitter each. Sitting here restores energy and mood.
 var break_tiles: Array[Vector2i] = []
 ## Break tile -> the table tile it faces.
 var break_tables := {}
+## Walkable tiles around the break tables. Overflow breakers stand here and recover nothing.
+var break_stand_tiles: Array[Vector2i] = []
 var astar := AStarGrid2D.new()
 
 var _materials := {}
@@ -102,6 +104,7 @@ func _ready() -> void:
 			_build_tile(Vector2i(x, z), LAYOUT[z][x])
 	for station: Station in stations.values():
 		station.handoff_tile = _handoff_tile(station)
+	_collect_break_stands()
 
 
 # --- Grid helpers -----------------------------------------------------------
@@ -121,6 +124,24 @@ static func tile_distance(a: Vector3, b: Vector3) -> float:
 
 func is_walkable(t: Vector2i) -> bool:
 	return astar.is_in_boundsv(t) and LAYOUT[t.y][t.x] == "."
+
+
+## Tiles immediately around the break seats and tables, not the seats themselves.
+func _collect_break_stands() -> void:
+	var seen := {}
+	var seeds: Array[Vector2i] = []
+	seeds.append_array(break_tiles)
+	for seat in break_tables:
+		seeds.append(break_tables[seat])
+	for seed in seeds:
+		for dz in range(-1, 2):
+			for dx in range(-1, 2):
+				var t := seed + Vector2i(dx, dz)
+				if break_tiles.has(t) or not is_walkable(t):
+					continue
+				seen[t] = true
+	for t in seen:
+		break_stand_tiles.append(t)
 
 
 ## World-space path from a point to the centre of a tile. Empty if none.

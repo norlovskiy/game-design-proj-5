@@ -1,5 +1,9 @@
 # Levels and economy
 
+> This is the original multi-day design proposal. The implemented three-level
+> campaign is documented in [campaign.md](campaign.md); its targets, customer
+> budgets, resets and result screens replace the proposal below.
+
 Owners: Norman builds the structure; Naxin tunes the numbers. Constants in
 `CAPS` are defined in [Balance](balance.md).
 

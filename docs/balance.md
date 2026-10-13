@@ -86,7 +86,13 @@ not decisions.
 | `MAX_QUEUE` (customers waiting to order; more don't join) | 6 | TBD |
 | `CUSTOMER_WALK_SPEED` | 2 tiles/s | TBD |
 | `ORDER_TAKE_TIME` | 2 s at work speed 1 | TBD |
-| `COOK_TIME` (per station) | grill 8 s, fryer 6 s, prep 5 s at work speed 1 | TBD |
+| `COOK_TIME` (per station) | grill 7 s, fryer 5 s, prep 4 s at work speed 1 | TBD |
+| `COMBO_LEVELS` | 6 | |
+| `COMBO_REWARD_MAX` | 64 at level 6; level 1 is 0, steps in between are linear | |
+| `COMBO_DRAIN_TIMES` | 12, 11, 10, 9, 8, 8 s by level | |
+| Combo bar colour | green at level 1 to bright orange at level 6 | |
+| Combo bar shake | from level 3, up to 5 px | |
+| `COMBO_COOLDOWN` | 5 s after a combo settles | |
 | `ORDER_BASE_PRICE` | 10 | TBD |
 | `ORDER_MAX_TIP` | 5 | TBD |
 | Spill chance, by energy and personality | TBD | TBD |

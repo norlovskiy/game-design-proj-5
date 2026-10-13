@@ -74,7 +74,7 @@ This is the game's one deliberate exception to "almost no text".
 | Verb | What the player does | Effect | Cost |
 |------|----------------------|--------|------|
 | Assign | Pick a station from an icon menu that opens on the spot | The NPC takes that standing role until told otherwise. The NPC may refuse. | Counts as a reassignment if the NPC already had a station |
-| Praise | Press the button | Mood up, opinion of the manager up | Manager locked for `VERB_LOCK`; per-NPC cooldown; diminishing returns on repeats |
+| Praise | Press the button | Mood up, opinion of the manager up | Per-NPC cooldown; diminishing returns on repeats; no manager movement lock |
 | Scold | Press the button | Work speed +`SCOLD_SPEED_BONUS` for `SCOLD_BURST_DURATION`, then mood −`SCOLD_MOOD_DROP` and opinion of the manager −`SCOLD_OPINION_DROP`. Doubled for Irritable. | Same as Praise |
 | Break | Press the button | The NPC leaves the station for `BREAK_DURATION` and energy restores. The NPC may refuse. | Same as Praise, plus the station is unstaffed |
 

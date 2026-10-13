@@ -34,11 +34,19 @@ var occupant: Node = null
 var tickets: Array[Order] = []
 var dishes: Array[Order] = []
 ## Progress on the front ticket, 0 to 1. Stays with the station if the cook
-## changes.
+## changes. The bar above the station reads this number, not the NPC.
 var cook_progress := 0.0
 
+const BAR_WIDTH := 1.35
+const BAR_HEIGHT := 0.28
+const BAR_INSET := 0.035
+const BAR_BACK := Color(0.28, 0.28, 0.30)
+
 var _taken_label: Label3D
-var _progress_label: Label3D
+var _progress_root: Node3D
+var _progress_fill: MeshInstance3D
+var _alert: Label3D
+var _alert_age := 0.0
 
 
 func setup(id: String, at_tile: Vector2i, stand_tile: Vector2i) -> void:
@@ -135,14 +143,71 @@ func _layout() -> void:
 	_update_progress()
 
 
+func _process(delta: float) -> void:
+	_update_progress()
+	_face_progress_bar()
+	_update_alert(delta)
+
+
+## A ticket is on this station and its NPC is actually cooking it. The bar
+## hides when they stop; cook_progress stays on the station.
+func _cook_in_progress() -> bool:
+	if not is_cook() or occupant == null or not occupant.has_method("is_working_now"):
+		return false
+	return occupant.is_working_now()
+
+
 func _update_progress() -> void:
-	if _progress_label == null:
+	if _progress_root == null:
 		return
-	var cooking := is_cook() and not tickets.is_empty()
-	_progress_label.visible = cooking
-	if cooking:
-		var filled := roundi(cook_progress * 8.0)
-		_progress_label.text = "[" + "#".repeat(filled) + "-".repeat(8 - filled) + "]"
+	var cooking := _cook_in_progress()
+	_progress_root.visible = cooking
+	if not cooking:
+		return
+	var inner_w := BAR_WIDTH - BAR_INSET * 2.0
+	var inner_h := BAR_HEIGHT - BAR_INSET * 2.0
+	var filled := inner_w * clampf(cook_progress, 0.0, 1.0)
+	var quad := _progress_fill.mesh as QuadMesh
+	quad.size = Vector2(maxf(filled, 0.001), inner_h)
+	# QuadMesh is centered, so shift it to keep the left edge fixed.
+	_progress_fill.position.x = -inner_w * 0.5 + filled * 0.5
+	_progress_fill.visible = filled > 0.001
+	_face_progress_bar()
+
+
+func _face_progress_bar() -> void:
+	if _progress_root == null or not _progress_root.visible or not is_inside_tree():
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var xform := _progress_root.global_transform
+	xform.basis = cam.global_transform.basis
+	_progress_root.global_transform = xform
+
+
+## A finished dish is waiting. The mark stays until an NPC picks it up
+## (or the dish is thrown out because the customer left).
+func _update_alert(delta: float) -> void:
+	if _alert == null:
+		return
+	var ready := is_cook() and not dishes.is_empty()
+	if not ready:
+		_alert.visible = false
+		_alert_age = 0.0
+		return
+	if not _alert.visible:
+		_alert_age = 0.0
+	_alert.visible = true
+	_alert_age += delta
+	var pop := 1.0
+	if _alert_age < 0.16:
+		pop = lerpf(0.25, 1.2, _alert_age / 0.16)
+	elif _alert_age < 0.28:
+		pop = lerpf(1.2, 1.0, (_alert_age - 0.16) / 0.12)
+	var blink: float = 1.0 if fmod(_alert_age, 0.5) < 0.3 else 0.25
+	_alert.modulate = Color(1.0, 0.86, 0.1, blink)
+	_alert.scale = Vector3.ONE * pop
 
 
 func is_free() -> bool:
@@ -176,13 +241,41 @@ func build_labels(height: float) -> void:
 	_taken_label.position = Vector3(0, height + 0.22, 0)
 	_taken_label.no_depth_test = true
 	add_child(_taken_label)
-	_progress_label = Label3D.new()
-	_progress_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_progress_label.font_size = 32
-	_progress_label.outline_size = 8
-	_progress_label.pixel_size = 0.006
-	_progress_label.modulate = Color(1.0, 0.85, 0.3)
-	_progress_label.position = Vector3(0, height + 0.7, 0)
-	_progress_label.no_depth_test = true
-	_progress_label.visible = false
-	add_child(_progress_label)
+	_progress_root = Node3D.new()
+	_progress_root.position = Vector3(0, height + 0.82, 0)
+	_progress_root.visible = false
+	add_child(_progress_root)
+	var frame := _bar_quad(Vector2(BAR_WIDTH, BAR_HEIGHT), BAR_BACK, 0)
+	_progress_root.add_child(frame)
+	_progress_fill = _bar_quad(Vector2(0.001, BAR_HEIGHT - BAR_INSET * 2.0), Color(0.20, 0.82, 0.28), 1)
+	_progress_fill.position = Vector3(-BAR_WIDTH * 0.5, 0, -0.01)
+	_progress_fill.visible = false
+	_progress_root.add_child(_progress_fill)
+	_alert = Label3D.new()
+	_alert.text = "!"
+	_alert.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_alert.font_size = 72
+	_alert.outline_size = 14
+	_alert.pixel_size = 0.01
+	_alert.modulate = Color(1.0, 0.86, 0.1)
+	_alert.outline_modulate = Color(0.25, 0.16, 0.0)
+	_alert.position = Vector3(0, height + 1.28, 0)
+	_alert.no_depth_test = true
+	_alert.visible = false
+	add_child(_alert)
+
+
+func _bar_quad(quad_size: Vector2, color: Color, priority: int) -> MeshInstance3D:
+	var mesh_inst := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = quad_size
+	mesh_inst.mesh = quad
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.no_depth_test = true
+	mat.render_priority = priority
+	mesh_inst.material_override = mat
+	return mesh_inst

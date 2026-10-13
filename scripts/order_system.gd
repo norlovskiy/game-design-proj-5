@@ -7,6 +7,7 @@ extends Node3D
 ## See docs/stations-and-orders.md.
 
 signal earnings_changed(total: float)
+signal order_served
 
 ## Customers waiting to order stand in a line along the counter row, front
 ## first; customers who have ordered wait for their dish to the left.
@@ -20,6 +21,11 @@ var crew: Array = []
 var level := 1
 ## When false, no new customers arrive (tests and debugging).
 var spawning := true
+## Campaign counts every customer, including those who leave before ordering.
+var customer_limit := -1
+var spawned_count := 0
+var completed_count := 0
+var elapsed := 0.0
 
 var earnings := 0.0
 var line: Array[Customer] = []  # waiting to order, front first
@@ -30,8 +36,11 @@ var _spawn_timer := Balance.FIRST_CUSTOMER_DELAY
 
 
 func _process(delta: float) -> void:
-	if spawning:
+	elapsed += delta
+	if spawning and (customer_limit < 0 or spawned_count < customer_limit):
 		_spawn_timer -= delta
+		# Original prototype cadence: restart the random timer even when
+		# the queue is full. Only actual arrivals count toward the budget.
 		if _spawn_timer <= 0.0:
 			_spawn_timer = _next_interval()
 			if line.size() < Balance.MAX_QUEUE:
@@ -41,13 +50,26 @@ func _process(delta: float) -> void:
 			_walk_out(c)
 
 
+## Includes customers still walking to the exit, not just waiting customers.
+func all_customers_gone() -> bool:
+	if customer_limit < 0 or spawned_count < customer_limit:
+		return false
+	for child in get_children():
+		if child is Customer:
+			return false
+	return true
+
+
 # --- Customers ----------------------------------------------------------------
 
 func spawn_customer() -> Customer:
+	if customer_limit >= 0 and spawned_count >= customer_limit:
+		return null
 	var c := Customer.new()
 	add_child(c)
 	c.global_position = kitchen.tile_to_world(SPAWN_TILE)
 	line.append(c)
+	spawned_count += 1
 	_arrange()
 	return c
 
@@ -75,11 +97,12 @@ func take_order(station_id := "") -> Order:
 
 ## The counter NPC hands over a dish. Returns what the customer paid.
 func serve(order: Order) -> float:
-	if order == null or order.is_cancelled() or not is_instance_valid(order.customer):
+	if order == null or order.state != Order.State.DISH or not is_instance_valid(order.customer) or order.customer.leaving:
 		return 0.0
 	var c := order.customer
 	var paid := Balance.ORDER_BASE_PRICE + Balance.ORDER_MAX_TIP * c.patience_share()
 	earnings += paid
+	completed_count += 1
 	order.state = Order.State.SERVED
 	order.place(c.model, Vector3(0, 0.6, 0.3))
 	waiting.erase(c)
@@ -87,8 +110,16 @@ func serve(order: Order) -> float:
 	_arrange()
 	_coin(paid)
 	_log_all("order_completed")
+	order_served.emit()
 	earnings_changed.emit(earnings)
 	return paid
+
+
+func add_bonus(amount: float) -> void:
+	if amount == 0.0:
+		return
+	earnings += amount
+	earnings_changed.emit(earnings)
 
 
 func _walk_out(c: Customer) -> void:
@@ -129,7 +160,7 @@ func _arrange() -> void:
 
 
 func _next_interval() -> float:
-	var base: float = Balance.CUSTOMER_INTERVAL[clampi(level, 1, Balance.CUSTOMER_INTERVAL.size()) - 1]
+	var base: float = Balance.CUSTOMER_INTERVAL
 	var jitter := Balance.CUSTOMER_INTERVAL_JITTER
 	return base * rng.randf_range(1.0 - jitter, 1.0 + jitter)
 
