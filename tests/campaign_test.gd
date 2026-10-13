@@ -104,6 +104,7 @@ func _run() -> void:
 	orders.completed_count = 26
 	orders.earnings = 250.0
 	game.finish_level()
+	await _wait_for_result()
 	_check(game.state == "passed" and paused, "equal-to-target revenue passes and freezes the shift")
 	_check(game.next_count == 40, "passing with twenty-six serves plans forty customers")
 	_click("Next Level")
@@ -119,6 +120,7 @@ func _run() -> void:
 	orders.completed_count = 25
 	orders.earnings = 350.0
 	game.finish_level()
+	await _wait_for_result()
 	_check(game.next_count == 40, "passing below 85 percent keeps the customer budget")
 	_click("Next Level")
 	await _complete_intro(["Kit"])
@@ -133,6 +135,7 @@ func _run() -> void:
 	game.shift.combo.on_order_served()
 	game.shift.combo.on_order_served() # Level-two combo pays 13 at settlement.
 	game.finish_level()
+	await _wait_for_result()
 	_check(game.state == "passed" and orders.earnings == 550.0, "pending combo bonus counts before final result")
 	_check(_find_button("Next Level", game._content) == null, "third level has no nonexistent next level")
 	_click("Return to Main Menu")
@@ -144,6 +147,7 @@ func _run() -> void:
 	orders.spawned_count = 30
 	orders.earnings = 249.99
 	game.finish_level()
+	await _wait_for_result()
 	_check(game.state == "failed" and paused, "revenue below target shows failure")
 	_check(_find_button("Next Level", game._content) == null, "failure cannot advance")
 	_click("Return to Main Menu")
@@ -164,6 +168,11 @@ func _run() -> void:
 	await process_frame
 	print("Campaign: %d failure(s)" % failures)
 	quit(1 if failures else 0)
+
+
+func _wait_for_result() -> void:
+	while game.state == "settling":
+		await process_frame
 
 
 func _complete_intro(names: Array) -> void:

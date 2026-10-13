@@ -12,6 +12,13 @@ const CORNER := 10.0
 const SETTLE_TIME := 0.45
 const SETTLE_SCALE := 1.35
 const LABEL_POS := Vector2(0, 2)
+const REWARD_SOUNDS := {
+	2: preload("res://assets/audio/2.mp3"),
+	3: preload("res://assets/audio/3.mp3"),
+	4: preload("res://assets/audio/4.mp3"),
+	5: preload("res://assets/audio/5.mp3"),
+	6: preload("res://assets/audio/6.mp3"),
+}
 
 var orders: OrderSystem
 
@@ -23,9 +30,16 @@ var _shake := Vector2.ZERO
 ## idle, running, settling, cooldown
 var _state := "idle"
 var _timer := 0.0
+var reward_audio: AudioStreamPlayer
 
 
 func _ready() -> void:
+	reward_audio = AudioStreamPlayer.new()
+	reward_audio.name = "ComboRewardSound"
+	# Let a final combo sound finish even when the result screen pauses the shift.
+	reward_audio.process_mode = Node.PROCESS_MODE_ALWAYS
+	reward_audio.volume_db = -3.0
+	add_child(reward_audio)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = METER_SIZE
 	size = METER_SIZE
@@ -119,6 +133,9 @@ func _begin_settle() -> void:
 	_label.position = LABEL_POS
 	_label.scale = Vector2.ONE
 	orders.add_bonus(float(Balance.combo_reward(_level)))
+	if REWARD_SOUNDS.has(_level):
+		reward_audio.stream = REWARD_SOUNDS[_level]
+		reward_audio.play()
 
 
 ## Pay a still-running combo before the campaign compares final revenue.

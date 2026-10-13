@@ -44,10 +44,18 @@ var _intro_returning := false
 var _intro_camera_position := Vector3.ZERO
 var _intro_camera_size := 0.0
 var _intro_tween: Tween
+var music: AudioStreamPlayer
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	music = AudioStreamPlayer.new()
+	music.name = "BackgroundMusic"
+	var track := preload("res://assets/audio/background.mp3").duplicate() as AudioStreamMP3
+	track.loop = true
+	music.stream = track
+	music.volume_db = -18.0
+	add_child(music)
 	_build_ui()
 	show_main_menu()
 
@@ -174,6 +182,7 @@ func _clear_modal() -> void:
 
 
 func _discard_shift() -> void:
+	music.stop()
 	if _intro_tween:
 		_intro_tween.kill()
 	_intro.hide()
@@ -255,11 +264,14 @@ func _start_level() -> void:
 	_hud.show()
 	_pause_button.show()
 	_refresh_hud()
+	music.stream_paused = true
+	music.play(0.0)
 	_begin_intro()
 
 
 func _begin_intro() -> void:
 	state = "intro"
+	music.stream_paused = true
 	get_tree().paused = true
 	_pause_button.hide()
 	_intro_index = 0
@@ -318,6 +330,7 @@ func _finish_intro() -> void:
 	_intro.hide()
 	state = "playing"
 	get_tree().paused = false
+	music.stream_paused = false
 	_pause_button.show()
 
 
@@ -326,6 +339,10 @@ func _process(_delta: float) -> void:
 		if not _intro_returning:
 			_intro_characters += _delta * 40.0
 			_intro_text.visible_characters = mini(int(_intro_characters), _intro_text.text.length())
+		return
+	if state == "settling":
+		if shift.combo._state != "settling":
+			_show_level_result()
 		return
 	if state == "menu" and is_instance_valid(_start_button):
 		_pulse_time += _delta
@@ -351,6 +368,7 @@ func pause_game() -> void:
 	if state != "playing":
 		return
 	state = "paused"
+	music.stream_paused = true
 	get_tree().paused = true
 	_pause_button.hide()
 	_clear_modal()
@@ -364,6 +382,7 @@ func resume_game() -> void:
 	if state != "paused":
 		return
 	state = "playing"
+	music.stream_paused = false
 	get_tree().paused = false
 	_modal.hide()
 	_pause_button.show()
@@ -373,10 +392,19 @@ func finish_level() -> void:
 	if state != "playing" or not shift.orders.all_customers_gone():
 		return
 	shift.combo.settle_pending_bonus()
+	if shift.combo._state == "settling":
+		state = "settling"
+		_pause_button.hide()
+		return
+	_show_level_result()
+
+
+func _show_level_result() -> void:
 	var orders: OrderSystem = shift.orders
 	var passed := orders.earnings >= float(Balance.LEVEL_TARGETS[level - 1])
 	next_count = Balance.next_customer_count(customer_count, orders.completed_count)
 	state = "passed" if passed else "failed"
+	music.stream_paused = true
 	shift.panel.close()
 	shift.overlay.hide()
 	get_tree().paused = true

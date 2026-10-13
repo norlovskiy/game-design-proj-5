@@ -67,3 +67,10 @@ level 3 shows campaign completion and Return to Main Menu. Failure shows
 the result and Return to Main Menu, without an advance button.
 
 All player-facing text is English. Tuning constants live in `scripts/balance.gd`.
+
+Audio files live in `assets/audio`. Background music loops during gameplay,
+pauses during introductions, pause menus and results, and restarts for each
+new level. Returning to the main menu stops it. Combo levels 2 through 6
+play their matching numbered MP3 when the reward label starts enlarging;
+level 1 is silent. The final combo animation completes before showing results,
+and its reward sound can finish playing on the result screen.
