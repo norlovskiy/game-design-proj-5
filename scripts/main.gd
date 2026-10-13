@@ -3,11 +3,11 @@ extends Node3D
 ## level's roster of NPCs, customers and orders, and the UI, and routes the
 ## interact key.
 
-## All campaign levels use the full five-person team.
+## Employees join gradually as the campaign advances.
 const ROSTERS := {
-	1: ["lazy", "irritable", "clean_freak", "chatty", "overachiever"],
-	2: ["lazy", "irritable", "clean_freak", "chatty", "overachiever"],
-	3: ["lazy", "irritable", "clean_freak", "chatty", "overachiever"],
+	1: ["irritable", "lazy", "clean_freak"],
+	2: ["irritable", "lazy", "clean_freak", "chatty"],
+	3: ["irritable", "lazy", "clean_freak", "chatty", "overachiever"],
 }
 const NAMES := {
 	"lazy": "Sam", "irritable": "Avery", "clean_freak": "Jo",

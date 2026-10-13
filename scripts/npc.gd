@@ -207,7 +207,25 @@ func legal_actions() -> Array[String]:
 	legal.append("slack")
 	for id: String in Station.IDS:
 		var s: Station = kitchen.stations[id]
+<<<<<<< Updated upstream
 		if s != station and s.is_free():
+=======
+		# Finish assigned cooking/counter work before autonomously cleaning.
+		# This is legality, so both Utility and Jev must respect the rule.
+		if personality.display_name == "Clean freak" and id == "cleaning" \
+				and station != null and station.station_id != "cleaning" and _has_work():
+			continue
+
+		var jo_claiming_cleaning := (
+			personality.display_name == "Clean freak"
+			and id == "cleaning"
+		)
+
+		if (
+			s != station
+			and (s.is_free() or jo_claiming_cleaning)
+		):
+>>>>>>> Stashed changes
 			legal.append("switch:" + id)
 	for other: NPC in coworkers():
 		var distance := distance_to(other)

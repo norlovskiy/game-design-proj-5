@@ -147,6 +147,10 @@ static func _score_action(action_id: String, snapshot: Dictionary) -> float:
 		"switch":
 			score = Balance.UTILITY_SWITCH_BASE
 
+<<<<<<< Updated upstream
+=======
+			# Jo prefers Cleaning when legal; unfinished assigned jobs exclude it.
+>>>>>>> Stashed changes
 			if (
 				personality == "Clean freak"
 				and target == "cleaning"

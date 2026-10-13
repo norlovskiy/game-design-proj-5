@@ -11,11 +11,17 @@ func _initialize() -> void:
 func _run() -> void:
 	Engine.time_scale = 100.0
 	var game: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	game.debug_brains = true
 	root.add_child(game)
 	for index in 3:
 		game.level = index + 1
 		game.customer_count = Balance.FIRST_LEVEL_CUSTOMERS + index * Balance.CUSTOMER_COUNT_INCREASE
 		game._start_level()
+		while game.state == "intro" and not game._intro_returning:
+			game._intro_text.visible_characters = game._intro_text.text.length()
+			game.advance_intro()
+		while game.state == "intro":
+			await process_frame
 		var orders: OrderSystem = game.shift.orders
 		var last_arrival: float = Balance.FIRST_CUSTOMER_DELAY + (game.customer_count - 1) * Balance.CUSTOMER_INTERVAL * (1.0 - Balance.CUSTOMER_INTERVAL_JITTER)
 		var deadline: float = last_arrival + game.customer_count * Balance.CUSTOMER_PATIENCE

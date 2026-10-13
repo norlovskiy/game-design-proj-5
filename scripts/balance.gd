@@ -10,11 +10,11 @@ extends RefCounted
 const DAY_LENGTH := 210.0
 const DAYS_PER_LEVEL := 3
 
-# Campaign: thirty customers initially, two more after an 85% completion rate.
+# Campaign: thirty customers initially, ten more after an 85% completion rate.
 # Gradual targets leave room for missed orders; tips and combos count too.
 const LEVEL_TARGETS: Array[int] = [250, 350, 550]
 const FIRST_LEVEL_CUSTOMERS := 30
-const CUSTOMER_COUNT_INCREASE := 2
+const CUSTOMER_COUNT_INCREASE := 10
 const CUSTOMER_GROWTH_THRESHOLD := 0.85
 
 
@@ -229,3 +229,9 @@ const UTILITY_CHATTY_CHAT_BONUS := 100.0
 const UTILITY_OVERACHIEVER_WORK_BONUS := 80.0
 const UTILITY_OVERACHIEVER_SLACK_PENALTY := 50.0
 const UTILITY_OVERACHIEVER_BREAK_PENALTY := 65.0
+<<<<<<< Updated upstream
+=======
+
+const UTILITY_CLEAN_CLAIM_CLEANING_BONUS := 100.0
+const UTILITY_OVERACHIEVER_CLAIM_STATION_BONUS := 200.0
+>>>>>>> Stashed changes

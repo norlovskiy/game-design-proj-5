@@ -12,10 +12,20 @@ Open the folder in Godot 4.5 or later and press Play. The entry scene is
 `scenes/game.tscn`: **Start Game** starts a fresh level 1. The standalone
 kitchen scene `scenes/main.tscn` remains available for development.
 
+The main menu contains the title, a short tagline, bright-blue **Instructions** and a gently pulsing
+**Start Game** button. Instructions explains controls, staffing, personalities,
+revenue and pause, with **Back to Main Menu** at the top right. Employee
+interaction panels show their configured **Personality** below the talk line.
+
 The three revenue targets are **$250 / $350 / $550**, shown with current revenue
 at the top left. Level 1 has **30 customers**. Serving at least **85%** adds
-**2 customers** to the next level; otherwise its customer count stays the same.
-Every level uses the same five employees: Sam, Avery, Jo, Riley and Kit.
+**10 customers** to the next level; otherwise its customer count stays the same.
+Level 1 starts with Avery, Sam and Jo. Passing into level 2 adds Riley;
+passing into level 3 adds Kit. Each newly introduced employee gets a paused
+camera close-up and a short English tip typed into a white rounded panel.
+Click Continue (or E / Space / Enter) to reveal the text, then advance.
+Jo prefers Cleaning more moderately and finishes assigned cooking or counter
+work before switching back; both Utility and Jev respect this rule.
 All levels use the original prototype's running cadence: a 9-second base
 with +/-30% random variation, and the first arrival after 3 seconds. There is no
 target shift duration; results appear after all scheduled customers leave.
@@ -45,6 +55,7 @@ godot --headless --path . -s res://tests/smoke_test.gd
 godot --headless --path . -s res://tests/utility_brain_test.gd
 godot --headless --path . -s res://tests/campaign_test.gd
 godot --headless --path . -s res://tests/campaign_pacing_test.gd
+godot --headless --path . -s res://tests/jo_work_test.gd
 ```
 
 The smoke test plays through every verb, forces every NPC action, and runs

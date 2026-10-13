@@ -14,6 +14,7 @@ var kitchen: Kitchen
 var _portrait: ColorRect
 var _name: Label
 var _talk: Label
+var _personality: Label
 var _energy: ProgressBar
 var _opinion: ProgressBar
 var _coworkers: HBoxContainer
@@ -53,6 +54,9 @@ func _ready() -> void:
 	_talk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_talk.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(_talk)
+	_personality = Label.new()
+	_personality.add_theme_font_size_override("font_size", 16)
+	box.add_child(_personality)
 
 	_energy = _slider_row(box, "Energy", Color(0.95, 0.80, 0.25))
 	_opinion = _slider_row(box, "Opinion of you", Color(0.40, 0.70, 0.95))
@@ -92,6 +96,8 @@ func open(target: NPC) -> void:
 	_show_stations(false)
 	_portrait.color = npc.personality.color
 	_name.text = npc.npc_name
+	_personality.text = "Personality: " + npc.personality.display_name
+	_personality.add_theme_color_override("font_color", npc.personality.color.lightened(0.35))
 	_rebuild_coworkers()
 	visible = true
 	_refresh()
